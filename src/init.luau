@@ -1,0 +1,69 @@
+const define = require("@self/api/define")
+const event = require("@self/api/event")
+const funct = require("@self/api/funct")
+const array = require("@self/data_types/array")
+const boolean = require("@self/data_types/boolean")
+const buff = require("@self/data_types/buff")
+const cframe = require("@self/data_types/cframe")
+const color3 = require("@self/data_types/color3")
+const enum = require("@self/data_types/enum")
+const f16 = require("@self/data_types/f16")
+const f32 = require("@self/data_types/f32")
+const f64 = require("@self/data_types/f64")
+const i16 = require("@self/data_types/i16")
+const i32 = require("@self/data_types/i32")
+const i8 = require("@self/data_types/i8")
+const instance = require("@self/data_types/instance")
+const map = require("@self/data_types/map")
+const optional = require("@self/data_types/optional")
+const set = require("@self/data_types/set")
+const string = require("@self/data_types/string")
+const struct = require("@self/data_types/struct")
+const tuple = require("@self/data_types/tuple")
+const u16 = require("@self/data_types/u16")
+const u32 = require("@self/data_types/u32")
+const u8 = require("@self/data_types/u8")
+const unknown = require("@self/data_types/unknown")
+const vec2 = require("@self/data_types/vec2")
+const vec3 = require("@self/data_types/vec3")
+const types = require("@self/types")
+
+export type DataType<T...> = types.DataType<T...>
+export type DataTypeValue<T> = types.DataTypeValue<T>
+export type DataTypeSchema<T> = types.DataTypeSchema<T>
+export type Writter = types.Writter
+export type Reader = types.Reader
+
+return {
+	define = define,
+	event = event,
+	funct = funct,
+
+	t = {
+		u8 = u8,
+		u16 = u16,
+		u32 = u32,
+		i8 = i8,
+		i16 = i16,
+		i32 = i32,
+		f16 = f16,
+		f32 = f32,
+		f64 = f64,
+		boolean = boolean,
+		string = string,
+		vec2 = vec2,
+		vec3 = vec3,
+		buff = buff,
+		cframe = cframe,
+		color3 = color3,
+		instance = instance,
+		unknown = unknown,
+		array = array,
+		map = map,
+		set = set,
+		enum = enum,
+		struct = struct,
+		optional = optional,
+		tuple = tuple,
+	},
+}

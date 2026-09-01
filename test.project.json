@@ -1,0 +1,16 @@
+{
+    "name": "BufNet-dev",
+    "emitLegacyScripts": false,
+    "tree": {
+        "$className": "DataModel",
+        "ReplicatedStorage": {
+            "$className": "ReplicatedStorage",
+            "bufnet": {
+                "$path": "src"
+            },
+            "test": {
+                "$path": "test"
+            }
+        }
+    }
+}
