@@ -2,7 +2,6 @@ const RunService = game:GetService("RunService")
 
 const types = require("../types")
 const net = require("../process/net")
-const cases = require("../util/cases")
 
 const IS_SERVER = RunService:IsServer()
 
@@ -65,6 +64,9 @@ const function define<Objects, Options>(
 ): Def<Objects, Options>
 	const opt: DefOptions = options or {}
 
+	const casing = opt.casing or types.default_case
+	const method_names = types.get_casing(casing :: types.DefaultCase)
+
 	_G._BUFNET = _G._BUFNET or {}
 	if _G._BUFNET[name:upper()] then
 		error(
@@ -101,7 +103,7 @@ const function define<Objects, Options>(
 
 		const lifecycle = create_lifecycle(name, opt.auto_flush)
 		returns = resolve_objects_recursive(objects, "", lifecycle)
-		returns[cases.to_case("flush", opt.casing or "Snake")] = lifecycle.flush
+		returns[method_names["flush"]] = lifecycle.flush
 
 		return table.freeze(returns)
 	end

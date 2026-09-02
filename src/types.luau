@@ -1,6 +1,4 @@
-const cases = require("./util/cases")
-
-type ToCase<Str, C> = cases.ToCase<Str, C>
+--!nolint LocalShadow
 
 export type BufferSave = {
 	size: number,
@@ -79,8 +77,10 @@ export type FunctProps<T... = ...unknown, R... = ...unknown> = {
 	read returns: DataType<R...>,
 }
 
+export type Case = "Pascal" | "Camel" | "Snake"
+
 export type DefOptions = {
-	read casing: cases.Case?,
+	read casing: Case?,
 	read default_call: EventCall?,
 	read auto_flush: (true | false)?,
 }
@@ -255,9 +255,10 @@ type function read_property(t: type?, name: string): type?
 end
 
 type function format_interface_casing(c: type, tbl: type)
+	const casing = get_casing(c)
 	const new_table = types.newtable()
 	for k, prop in tbl:properties() do
-		new_table:setproperty(ToCase(k, c), prop.read or prop.write)
+		new_table:setproperty(casing:readproperty(k), prop.read or prop.write)
 	end
 	return new_table
 end
@@ -265,7 +266,7 @@ end
 type function resolve_objects(objects: type, options: type, is_server: boolean)
 	assert(objects:is("table"), "Expected a table")
 
-	const casing = read_property(options, "casing") or types.singleton("Snake")
+	const casing = read_property(options, "casing") or types.singleton(DefaultCase)
 	const auto_flush = read_property(options, "auto_flush")
 
 	const build_event = is_server and build_event_server or build_event_client
@@ -301,7 +302,7 @@ type function resolve_objects(objects: type, options: type, is_server: boolean)
 
 	const returns = resolve_objects_recursive(objects)
 	if auto_flush == types.singleton(false) then
-		returns:setproperty(ToCase(types.singleton("flush"), casing), types.newfunction())
+		returns:setproperty(get_casing(casing):readproperty(types.singleton("flush")), types.newfunction())
 	end
 	return returns
 end
@@ -319,4 +320,55 @@ export type Def<Objects, Options> = {
 	client: () -> ClientObjects<Objects, Options>,
 }
 
-return nil
+const function build_case<P, C, S>(pascal: P, camel: C, snake: S): { Pascal: P, Camel: C, Snake: S }
+	return {
+		Pascal = pascal,
+		Camel = camel,
+		Snake = snake,
+	}
+end
+
+const cases = {
+	on = build_case("On" :: "On", "on" :: "on", "on" :: "on"),
+	invoke = build_case("Invoke" :: "Invoke", "invoke" :: "invoke", "invoke" :: "invoke"),
+	fire = build_case("Fire" :: "Fire", "fire" :: "fire", "fire" :: "fire"),
+	fire_all = build_case("FireAll" :: "FireAll", "fireAll" :: "fireAll", "fire_all" :: "fire_all"),
+	fire_list = build_case("FireList" :: "FireList", "fireList" :: "fireList", "fire_list" :: "fire_list"),
+	fire_except = build_case(
+		"FireExcept" :: "FireExcept",
+		"fireExcept" :: "fireExcept",
+		"fire_except" :: "fire_except"
+	),
+	flush = build_case("Flush" :: "Flush", "flush" :: "flush", "flush" :: "flush"),
+	iter = build_case("Iter" :: "Iter", "iter" :: "iter", "iter" :: "iter"),
+}
+
+type Cases = typeof(cases)
+
+export type function get_casing(case: type)
+	const casing = types.newtable()
+	for k, options in Cases:properties() do
+		casing:setproperty(k, options.read:readproperty(case))
+	end
+	return casing
+end
+
+const function get_casing<C>(case: C & Case): get_casing<C>
+	const casing = {}
+	for k, options in cases :: any do
+		casing[k] = options[case]
+	end
+	return casing :: any
+end
+
+export type DefaultCase = "Snake"
+export type DefaultCall = "SingleAsync"
+
+return {
+	cases = cases,
+
+	default_case = "Snake" :: DefaultCase,
+	default_call = "SingleAsync" :: DefaultCall,
+
+	get_casing = get_casing,
+}

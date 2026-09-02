@@ -3,7 +3,7 @@ const ReplicatedStorage = game:GetService("ReplicatedStorage")
 const Players = game:GetService("Players")
 
 const types = require("../types")
-const threadpool = require("../util/threadpool")
+const threadpool = require("./util/threadpool")
 const writter = require("./writter")
 const reader = require("./reader")
 
@@ -132,19 +132,17 @@ const function setup_remotes(namespace: string)
 	return reliable, unreliable
 end
 
-type ServerListener = (Player, ...any) -> ...any
-
 @native
 const function create_lifecycle_server(namespace: string, auto_flush: boolean?)
 	const reliable, unreliable = setup_remotes(namespace)
 
-	const reliable_listeners = table.create(256) :: { [number]: ServerListener | { ServerListener } }
+	const reliable_listeners = table.create(256) :: { [number]: { (Player, ...any) -> ...any } }
 	const reliable_queues = table.create(256) :: { [number]: RingBuffer }
 	const reliable_read_fns = table.create(256) :: { [number]: index<types.DataType<any>, "read"> }
-	const reliable_custom_dispatch = table.create(256) :: { [number]: ServerListener }
+	const reliable_custom_dispatch = table.create(256) :: { [number]: (Player, ...any) -> ...any }
 	const reliable_call_tag = buffer.create(256)
 
-	const unreliable_listeners = table.create(256) :: { [number]: { ServerListener | { ServerListener } } }
+	const unreliable_listeners = table.create(256) :: { [number]: { (Player, ...any) -> ...any } }
 	const unreliable_queues = table.create(256) :: { [number]: RingBuffer }
 	const unreliable_read_fns = table.create(256) :: { [number]: index<types.DataType<any>, "read"> }
 	const unreliable_call_tag = buffer.create(256)
@@ -194,13 +192,17 @@ const function create_lifecycle_server(namespace: string, auto_flush: boolean?)
 		if tag == CALL_POLLING then
 			push(queue, table.pack(player, ...))
 		elseif tag == CALL_SINGLE_ASYNC then
-			threadpool.spawn(listeners :: ServerListener, player, ...)
+			if listeners[1] then
+				threadpool.spawn(listeners[1], player, ...)
+			end
 		elseif tag == CALL_SINGLE_SYNC then
-			(listeners :: ServerListener)(player, ...)
+			if listeners[1] then
+				(listeners[1])(player, ...)
+			end
 		elseif tag == CALL_MANY_ASYNC then
-			threadpool.spawn_callbacks(listeners :: { ServerListener }, player, ...)
+			threadpool.spawn_callbacks(listeners, player, ...)
 		elseif tag == CALL_MANY_SYNC then
-			for _, listener in listeners :: { ServerListener } do
+			for _, listener in listeners do
 				listener(player, ...)
 			end
 		elseif tag == CALL_FUNCTION and is_reliable then
@@ -265,7 +267,7 @@ const function create_lifecycle_server(namespace: string, auto_flush: boolean?)
 		buffer.writeu8(call_tag, id, tag)
 
 		local i = id + 1
-		listeners[i] = if tag == CALL_SINGLE_ASYNC or tag == CALL_SINGLE_SYNC then nil else table.create(256) :: any
+		listeners[i] = table.create(if tag == CALL_SINGLE_ASYNC or tag == CALL_SINGLE_SYNC then 1 else 256) :: any
 		if call_type == "Polling" then
 			queues[i] = create_rb()
 		end
@@ -281,7 +283,7 @@ const function create_lifecycle_server(namespace: string, auto_flush: boolean?)
 		buffer.writeu8(reliable_call_tag, id, CALL_FUNCTION)
 
 		local i = id + 1
-		reliable_listeners[i] = nil :: any
+		reliable_listeners[i] = table.create(1) :: any
 		reliable_queues[i] = table.create(256) :: any
 		reliable_read_fns[i] = function(ctx: types.Reader)
 			const offset = ctx.read(1)
@@ -290,7 +292,7 @@ const function create_lifecycle_server(namespace: string, auto_flush: boolean?)
 		end :: any
 
 		reliable_custom_dispatch[i] = function(player: Player, invocation_id: number, ...)
-			const listener = reliable_listeners[i] :: ServerListener
+			const listener = reliable_listeners[i][1]
 			if listener then
 				threadpool.spawn(function(...)
 					local ret_results: any
@@ -337,19 +339,17 @@ const function create_lifecycle_server(namespace: string, auto_flush: boolean?)
 	}
 end
 
-type ClientListener = (...any) -> ...any
-
 @native
 const function create_lifecycle_client(namespace: string, auto_flush: boolean?)
 	const reliable, unreliable = setup_remotes(namespace)
 
-	const reliable_listeners = table.create(256) :: { [number]: ClientListener | { ClientListener } }
+	const reliable_listeners = table.create(256) :: { [number]: { (...any) -> ...any } }
 	const reliable_queues = table.create(256) :: { [number]: { [any]: any } }
 	const reliable_read_fns = table.create(256) :: { [number]: index<types.DataType<any>, "read"> }
-	const reliable_custom_dispatch = table.create(256) :: { [number]: ClientListener }
+	const reliable_custom_dispatch = table.create(256) :: { [number]: (...any) -> ...any }
 	const reliable_call_tag = buffer.create(256)
 
-	const unreliable_listeners = table.create(256) :: { [number]: ClientListener | { ClientListener } }
+	const unreliable_listeners = table.create(256) :: { [number]: { (...any) -> ...any } }
 	const unreliable_queues = table.create(256) :: { [number]: { [any]: any } }
 	const unreliable_read_fns = table.create(256) :: { [number]: index<types.DataType<any>, "read"> }
 	const unreliable_call_tag = buffer.create(256)
@@ -391,29 +391,29 @@ const function create_lifecycle_client(namespace: string, auto_flush: boolean?)
 		if tag == CALL_POLLING then
 			push(queue, table.pack(...))
 		elseif tag == CALL_SINGLE_ASYNC then
-			if not listeners then
+			if not listeners[1] then
 				push_args_to_queue(queue, ...)
 				return
 			end
-			threadpool.spawn(listeners :: ClientListener, ...)
+			threadpool.spawn(listeners[1], ...)
 		elseif tag == CALL_SINGLE_SYNC then
-			if not listeners then
+			if not listeners[1] then
 				push_args_to_queue(queue, ...)
 				return
 			end
-			(listeners :: ClientListener)(...)
+			listeners[1](...)
 		elseif tag == CALL_MANY_ASYNC then
-			if #(listeners :: { ClientListener }) == 0 then
+			if #listeners == 0 then
 				push_args_to_queue(queue, ...)
 				return
 			end
-			threadpool.spawn_callbacks(listeners :: { ClientListener }, ...)
+			threadpool.spawn_callbacks(listeners, ...)
 		elseif tag == CALL_MANY_SYNC then
-			if #(listeners :: { ClientListener }) == 0 then
+			if #listeners == 0 then
 				push_args_to_queue(queue, ...)
 				return
 			end
-			for _, listener in listeners :: { ClientListener } do
+			for _, listener in listeners do
 				listener(...)
 			end
 		elseif tag == CALL_FUNCTION and is_reliable then
@@ -479,7 +479,7 @@ const function create_lifecycle_client(namespace: string, auto_flush: boolean?)
 		buffer.writeu8(call_tag, id, tag)
 
 		local i = id + 1
-		listeners[i] = if tag == CALL_SINGLE_ASYNC or tag == CALL_SINGLE_SYNC then nil else table.create(256) :: any
+		listeners[i] = table.create(if tag == CALL_SINGLE_ASYNC or tag == CALL_SINGLE_SYNC then 1 else 256) :: any
 		queues[i] = if call_type == "Polling" then create_rb() :: any else table.create(256)
 		read_fns[i] = data_type.read
 

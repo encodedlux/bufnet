@@ -6,7 +6,6 @@ const RunService = game:GetService("RunService")
 const net = require("../process/net")
 const writter = require("../process/writter")
 const types = require("../types")
-const cases = require("../util/cases")
 
 const side: "server" | "client" = RunService:IsServer() and "server" or "client"
 
@@ -49,9 +48,11 @@ const function event<Props, Options, T...>(props: Props & EventProps<T...>): Eve
 			error("[BufNet] Event server can only be accessed from the server.")
 		end
 
-		const casing = options.casing or "Snake"
-		const call = props.call or options.default_call or "SingleAsync"
+		const casing = options.casing or types.default_case
+		const call = props.call or options.default_call or types.default_call
 		const use_polling = call == "Polling"
+
+		const method_names = types.get_casing(casing :: types.DefaultCase)
 
 		const unreliable = lifecycle.unreliable
 
@@ -60,7 +61,7 @@ const function event<Props, Options, T...>(props: Props & EventProps<T...>): Eve
 			const broadcast_snapshot = writter.create()
 
 			event = {
-				[cases.to_case("fire", casing)] = if is_reliable
+				[method_names["fire"]] = if is_reliable
 					then function(player: Player, ...: T...)
 						lifecycle.load(player)
 						write_id(lifecycle.writter, id)
@@ -71,7 +72,7 @@ const function event<Props, Options, T...>(props: Props & EventProps<T...>): Eve
 						const buff, refs = write_unreliable(lifecycle.writter, id, ...)
 						unreliable:FireClient(player, buff, refs)
 					end,
-				[cases.to_case("fire_all", casing)] = if is_reliable
+				[method_names["fire_all"]] = if is_reliable
 					then function(...: T...)
 						lifecycle.writter.load()
 						write_id(lifecycle.writter, id)
@@ -88,7 +89,7 @@ const function event<Props, Options, T...>(props: Props & EventProps<T...>): Eve
 						const buff, refs = write_unreliable(lifecycle.writter, id, ...)
 						unreliable:FireAllClients(buff, refs)
 					end,
-				[cases.to_case("fire_except", casing)] = if is_reliable
+				[method_names["fire_except"]] = if is_reliable
 					then function(except: Player, ...: T...)
 						lifecycle.writter.load()
 						write_id(lifecycle.writter, id)
@@ -112,7 +113,7 @@ const function event<Props, Options, T...>(props: Props & EventProps<T...>): Eve
 							unreliable:FireClient(player, buff, refs)
 						end
 					end,
-				[cases.to_case("fire_list", casing)] = if is_reliable
+				[method_names["fire_list"]] = if is_reliable
 					then function(players: { Player }, ...: T...)
 						lifecycle.writter.load()
 						write_id(lifecycle.writter, id)
@@ -137,7 +138,7 @@ const function event<Props, Options, T...>(props: Props & EventProps<T...>): Eve
 
 			if use_polling then
 				event = {
-					[cases.to_case("iter", casing)] = function()
+					[method_names["iter"]] = function()
 						local index = 0
 						return function()
 							index += 1
@@ -151,23 +152,23 @@ const function event<Props, Options, T...>(props: Props & EventProps<T...>): Eve
 				} :: any
 			else
 				event = {
-					[cases.to_case("on", casing)] = if call == "ManyAsync" or call == "ManySync"
+					[method_names["on"]] = if call == "ManyAsync" or call == "ManySync"
 						then function(callback: (player: Player, T...) -> ())
-							table.insert(reader.listeners :: any, callback)
+							table.insert(reader.listeners, callback)
 
 							return function()
-								const index = table.find(reader.listeners :: any, callback)
+								const index = table.find(reader.listeners, callback)
 								if index then
-									table.remove(reader.listeners :: any, index)
+									table.remove(reader.listeners, index)
 								end
 							end
 						end
 						else function(callback: (player: Player, T...) -> ())
-							reader.listeners = callback :: any
+							reader.listeners[1] = callback :: any
 
 							return function()
-								if (reader.listeners :: any) == callback then
-									reader.listeners = nil :: any
+								if reader.listeners[1] == callback then
+									reader.listeners[1] = nil
 								end
 							end
 						end,
@@ -191,9 +192,11 @@ const function event<Props, Options, T...>(props: Props & EventProps<T...>): Eve
 		end
 
 		const from = props.from
-		const casing = options.casing or "Snake"
-		const call = props.call or options.default_call or "SingleAsync"
+		const casing = options.casing or types.default_case
+		const call = props.call or options.default_call or types.default_call
 		const use_polling = call == "Polling"
+
+		const method_names = types.get_casing(casing :: types.DefaultCase)
 
 		const unreliable = lifecycle.unreliable
 
@@ -203,7 +206,7 @@ const function event<Props, Options, T...>(props: Props & EventProps<T...>): Eve
 
 			if use_polling then
 				event = {
-					[cases.to_case("iter", casing)] = function()
+					[method_names["iter"]] = function()
 						local index = 0
 						return function()
 							index += 1
@@ -217,9 +220,9 @@ const function event<Props, Options, T...>(props: Props & EventProps<T...>): Eve
 				} :: any
 			else
 				event = {
-					[cases.to_case("on", casing)] = if call == "ManyAsync" or call == "ManySync"
+					[method_names["on"]] = if call == "ManyAsync" or call == "ManySync"
 						then function(callback: (T...) -> ())
-							table.insert(reader.listeners :: any, callback)
+							table.insert(reader.listeners, callback)
 
 							const event_queue = reader.queue
 							reader.queue = {} :: any
@@ -228,14 +231,14 @@ const function event<Props, Options, T...>(props: Props & EventProps<T...>): Eve
 							end
 
 							return function()
-								const index = table.find(reader.listeners :: any, callback)
+								const index = table.find(reader.listeners, callback)
 								if index then
-									table.remove(reader.listeners :: any, index)
+									table.remove(reader.listeners, index)
 								end
 							end
 						end
 						else function(callback: (T...) -> ())
-							reader.listeners = callback :: any
+							reader.listeners[1] = callback :: any
 
 							const event_queue = reader.queue
 							reader.queue = {} :: any
@@ -244,8 +247,8 @@ const function event<Props, Options, T...>(props: Props & EventProps<T...>): Eve
 							end
 
 							return function()
-								if (reader.listeners :: any) == callback then
-									reader.listeners = nil :: any
+								if reader.listeners[1] == callback then
+									reader.listeners[1] = nil
 								end
 							end
 						end,
@@ -255,7 +258,7 @@ const function event<Props, Options, T...>(props: Props & EventProps<T...>): Eve
 			const unreliable_save = writter.create()
 
 			event = {
-				[cases.to_case("fire", casing)] = if is_reliable
+				[method_names["fire"]] = if is_reliable
 					then function(...: T...)
 						write_id(lifecycle.writter, id)
 						props.value.write(lifecycle.writter, ...)

@@ -2,7 +2,6 @@ const RunService = game:GetService("RunService")
 
 const net = require("../process/net")
 const types = require("../types")
-const cases = require("../util/cases")
 
 const side: "server" | "client" = RunService:IsServer() and "server" or "client"
 
@@ -27,11 +26,13 @@ const function funct<T..., R...>(props: FunctProps<T..., R...>): Funct<T..., R..
 			error("[BufNet] Function server can only be accessed from the server.")
 		end
 
-		const casing = options.casing or "Snake"
+		const casing = options.casing or types.default_case
 		const reader = lifecycle.register_function(id, props.value, props.returns)
 
+		const method_names = types.get_casing(casing :: types.DefaultCase)
+
 		const server_object = {
-			[cases.to_case("on", casing)] = function(callback: (Player, T...) -> R...)
+			[method_names["on"]] = function(callback: (Player, T...) -> R...)
 				reader.listeners = callback :: any
 
 				local invocation_queue = reader.queue
@@ -40,7 +41,7 @@ const function funct<T..., R...>(props: FunctProps<T..., R...>): Funct<T..., R..
 					lifecycle.dispatch(id, true, table.unpack(args, 1, args.n) :: any)
 				end
 			end,
-		}
+		} :: any
 
 		object = server_object
 		return object
@@ -60,9 +61,12 @@ const function funct<T..., R...>(props: FunctProps<T..., R...>): Funct<T..., R..
 
 		const casing = options.casing or "Snake"
 		const invoke = lifecycle.register_function(id, props.value, props.returns)
+
+		const method_names = types.get_casing(casing :: types.DefaultCase)
+
 		const client_object = {
-			[cases.to_case("invoke", casing)] = invoke :: any,
-		}
+			[method_names["invoke"]] = invoke :: any,
+		} :: any
 
 		object = client_object
 		return object
