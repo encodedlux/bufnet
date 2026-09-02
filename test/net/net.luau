@@ -17,7 +17,6 @@ return define("test", {
 	}),
 	scope = {
 		my_func = funct({
-			call = "Async",
 			value = t.tuple(t.string(), t.boolean()),
 			returns = t.string(),
 		}),

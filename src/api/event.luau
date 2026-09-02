@@ -16,7 +16,7 @@ type EventServer<Props, Options, T...> = types.EventServer<Props, Options, T...>
 type EventClient<Props, Options, T...> = types.EventClient<Props, Options, T...>
 type DefOptions = types.DefOptions
 
-const function event<Props, Options, T...>(props: Props | EventProps<T...>): Event<Props, Options, T...>
+const function event<Props, Options, T...>(props: Props & EventProps<T...>): Event<Props, Options, T...>
 	const props = props :: EventProps<T...>
 	local object: EventServer<Props, Options, T...> | EventClient<Props, Options, T...>
 	const from = props.from
@@ -151,26 +151,26 @@ const function event<Props, Options, T...>(props: Props | EventProps<T...>): Eve
 				} :: any
 			else
 				event = {
-					[cases.to_case("on", casing)] = function(callback: (player: Player, T...) -> ())
-						if call == "ManyAsync" or call == "ManySync" then
-							table.insert(reader.listeners, callback)
-						else
-							reader.listeners[1] = callback :: any
-						end
+					[cases.to_case("on", casing)] = if call == "ManyAsync" or call == "ManySync"
+						then function(callback: (player: Player, T...) -> ())
+							table.insert(reader.listeners :: any, callback)
 
-						return function()
-							if call == "ManyAsync" or call == "ManySync" then
-								const index = table.find(reader.listeners, callback)
+							return function()
+								const index = table.find(reader.listeners :: any, callback)
 								if index then
-									table.remove(reader.listeners, index)
-								end
-							else
-								if reader.listeners[1] == callback then
-									reader.listeners[1] = nil
+									table.remove(reader.listeners :: any, index)
 								end
 							end
 						end
-					end,
+						else function(callback: (player: Player, T...) -> ())
+							reader.listeners = callback :: any
+
+							return function()
+								if (reader.listeners :: any) == callback then
+									reader.listeners = nil :: any
+								end
+							end
+						end,
 				} :: any
 			end
 		end
@@ -217,32 +217,38 @@ const function event<Props, Options, T...>(props: Props | EventProps<T...>): Eve
 				} :: any
 			else
 				event = {
-					[cases.to_case("on", casing)] = function(callback: (T...) -> ())
-						if call == "ManyAsync" or call == "ManySync" then
-							table.insert(reader.listeners, callback :: any)
-						else
-							reader.listeners[1] = callback :: any
-						end
+					[cases.to_case("on", casing)] = if call == "ManyAsync" or call == "ManySync"
+						then function(callback: (T...) -> ())
+							table.insert(reader.listeners :: any, callback)
 
-						const event_queue = reader.queue
-						reader.queue = {} :: any
-						for _, args in event_queue do
-							lifecycle.dispatch(id, is_reliable, table.unpack(args, 1, args.n) :: any)
-						end
+							const event_queue = reader.queue
+							reader.queue = {} :: any
+							for _, args in event_queue do
+								lifecycle.dispatch(id, is_reliable, table.unpack(args, 1, args.n) :: any)
+							end
 
-						return function()
-							if call == "ManyAsync" or call == "ManySync" then
-								const index = table.find(reader.listeners, callback :: any)
+							return function()
+								const index = table.find(reader.listeners :: any, callback)
 								if index then
-									table.remove(reader.listeners, index)
-								end
-							else
-								if reader.listeners[1] == callback then
-									reader.listeners[1] = nil
+									table.remove(reader.listeners :: any, index)
 								end
 							end
 						end
-					end,
+						else function(callback: (T...) -> ())
+							reader.listeners = callback :: any
+
+							const event_queue = reader.queue
+							reader.queue = {} :: any
+							for _, args in event_queue do
+								lifecycle.dispatch(id, is_reliable, table.unpack(args, 1, args.n) :: any)
+							end
+
+							return function()
+								if (reader.listeners :: any) == callback then
+									reader.listeners = nil :: any
+								end
+							end
+						end,
 				} :: any
 			end
 		elseif from == "Client" then

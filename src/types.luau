@@ -68,20 +68,21 @@ export type EventCall = "SingleAsync" | "ManyAsync" | "SingleSync" | "ManySync" 
 export type EventType = "Reliable" | "Unreliable"
 
 export type EventProps<T... = ...unknown> = {
-	from: EventFrom,
-	type: EventType?,
-	call: EventCall?,
-	value: DataType<T...>,
+	read from: EventFrom,
+	read type: EventType?,
+	read call: EventCall?,
+	read value: DataType<T...>,
 }
 
-export type FunctProps<T... = ...unknown, R... = ...unknown> =
-	{ call: "Async", value: DataType<T...>, returns: DataType<R...> }
-	| { call: "Sync", value: DataType<T...>, returns: DataType<R...> }
+export type FunctProps<T... = ...unknown, R... = ...unknown> = {
+	read value: DataType<T...>,
+	read returns: DataType<R...>,
+}
 
 export type DefOptions = {
-	casing: cases.Case?,
-	default_call: EventCall?,
-	auto_flush: (true | false)?,
+	read casing: cases.Case?,
+	read default_call: EventCall?,
+	read auto_flush: (true | false)?,
 }
 
 type SinglePlayer = Player

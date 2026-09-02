@@ -32,7 +32,7 @@ const function funct<T..., R...>(props: FunctProps<T..., R...>): Funct<T..., R..
 
 		const server_object = {
 			[cases.to_case("on", casing)] = function(callback: (Player, T...) -> R...)
-				reader.listeners[1] = callback :: any
+				reader.listeners = callback :: any
 
 				local invocation_queue = reader.queue
 				reader.queue = {} :: any

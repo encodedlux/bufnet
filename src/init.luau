@@ -15,6 +15,7 @@ const i32 = require("@self/data_types/i32")
 const i8 = require("@self/data_types/i8")
 const instance = require("@self/data_types/instance")
 const map = require("@self/data_types/map")
+const null = require("@self/data_types/null")
 const optional = require("@self/data_types/optional")
 const set = require("@self/data_types/set")
 const string = require("@self/data_types/string")
@@ -49,21 +50,22 @@ return {
 		f16 = f16,
 		f32 = f32,
 		f64 = f64,
-		boolean = boolean,
 		string = string,
+		boolean = boolean,
+		buff = buff,
 		vec2 = vec2,
 		vec3 = vec3,
-		buff = buff,
 		cframe = cframe,
 		color3 = color3,
 		instance = instance,
-		unknown = unknown,
 		array = array,
 		map = map,
 		set = set,
-		enum = enum,
 		struct = struct,
-		optional = optional,
 		tuple = tuple,
+		enum = enum,
+		optional = optional,
+		unknown = unknown,
+		null = null,
 	},
 }
