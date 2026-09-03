@@ -1,6 +1,8 @@
+--!native
+--!optimize 2
+
 const types = require("../types")
 
-@native
 const function map<K, V>(key_type: types.DataType<K>, value_type: types.DataType<V>): types.DataType<{ [K]: V }>
 	const key_write = key_type.write
 	const key_read = key_type.read
@@ -8,7 +10,7 @@ const function map<K, V>(key_type: types.DataType<K>, value_type: types.DataType
 	const value_read = value_type.read
 
 	return {
-		write = @native function(ctx, value)
+		write = function(ctx, value)
 			const offset = ctx.alloc(2)
 
 			local count = 0
@@ -20,7 +22,7 @@ const function map<K, V>(key_type: types.DataType<K>, value_type: types.DataType
 
 			buffer.writeu16(ctx.buff, offset, count)
 		end,
-		read = @native function(ctx)
+		read = function(ctx)
 			const offset = ctx.read(2)
 			const map_length = buffer.readu16(ctx.buff, offset)
 			const result = {}

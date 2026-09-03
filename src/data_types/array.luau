@@ -1,17 +1,14 @@
+--!native
+--!optimize 2
+
 const types = require("../types")
 
-type ArrayOptions = {
-	min: number?,
-	max: number?,
-}
-
-@native
-const function array<T>(value_type: types.DataType<T>, options: ArrayOptions?): types.DataType<{ T }>
+const function array_generic<T>(value_type: types.DataType<T>): types.DataType<{ T }>
 	const value_write = value_type.write
 	const value_read = value_type.read
 
 	return {
-		write = @native function(ctx, value)
+		write = function(ctx, value)
 			const length = #value
 			const offset = ctx.alloc(2)
 			buffer.writeu16(ctx.buff, offset, length)
@@ -19,34 +16,51 @@ const function array<T>(value_type: types.DataType<T>, options: ArrayOptions?): 
 				value_write(ctx, value[i])
 			end
 		end,
-		read = if options and (options.min or options.max)
-			then @native function(ctx)
-				const offset = ctx.read(2)
-				const array_length = buffer.readu16(ctx.buff, offset)
-				if options.min and array_length < options.min then
-					error(`[BufNet] Expected array length to be larger than {options.min}, got {array_length} instead.`)
-				end
-				if options.max and array_length > options.max then
-					error(
-						`[BufNet] Expected array length to be smaller than {options.max}, got {array_length} instead.`
-					)
-				end
-				const array = table.create(array_length)
-				for i = 1, array_length do
-					array[i] = value_read(ctx)
-				end
-				return array
+		read = function(ctx)
+			const offset = ctx.read(2)
+			const array_length = buffer.readu16(ctx.buff, offset)
+			const array = table.create(array_length)
+			for i = 1, array_length do
+				array[i] = value_read(ctx)
 			end
-			else @native function(ctx)
-				const offset = ctx.read(2)
-				const array_length = buffer.readu16(ctx.buff, offset)
-				const array = table.create(array_length)
-				for i = 1, array_length do
-					array[i] = value_read(ctx)
-				end
-				return array
-			end,
+			return array
+		end,
 	}
+end
+
+const function array_len<T>(value_type: types.DataType<T>): types.DataType<{ T }>
+	const value_write_at = value_type.write_at :: (ctx: types.Writter, offset: number, value: T) -> ()
+	const value_read_at = value_type.read_at :: (ctx: types.Reader, offset: number) -> T
+	const length = value_type.length :: number
+
+	return {
+		write = function(ctx, value)
+			const array_length = #value
+			const offset = ctx.alloc(2 + array_length * length)
+			buffer.writeu16(ctx.buff, offset, array_length)
+			for i = 1, array_length do
+				value_write_at(ctx, (offset + 2) + (i - 1) * length, value[i])
+			end
+		end,
+		read = function(ctx)
+			const offset = ctx.read(2)
+			const array_length = buffer.readu16(ctx.buff, offset)
+			const array_offset = ctx.read(array_length * length)
+			const array = table.create(array_length)
+			for i = 1, array_length do
+				array[i] = value_read_at(ctx, array_offset + (i - 1) * length)
+			end
+			return array
+		end,
+	}
+end
+
+const function array<T>(value_type: types.DataType<T>): types.DataType<{ T }>
+	return if value_type.length
+			and value_type.write_at
+			and value_type.read_at
+		then array_len(value_type)
+		else array_generic(value_type)
 end
 
 return array

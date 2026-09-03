@@ -1,3 +1,5 @@
+--!native
+--!optimize 2
 --!nolint LocalShadow
 
 const Players = game:GetService("Players")

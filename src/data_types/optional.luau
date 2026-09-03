@@ -1,12 +1,14 @@
+--!native
+--!optimize 2
+
 const types = require("../types")
 
-@native
 const function optional<T>(value_type: types.DataType<T>): types.DataType<T?>
 	const value_write = value_type.write
 	const value_read = value_type.read
 
 	return {
-		write = @native function(ctx, value)
+		write = function(ctx, value)
 			const offset = ctx.alloc(1)
 			if value == nil then
 				buffer.writeu8(ctx.buff, offset, 0)
@@ -15,7 +17,7 @@ const function optional<T>(value_type: types.DataType<T>): types.DataType<T?>
 				value_write(ctx, value)
 			end
 		end,
-		read = @native function(ctx)
+		read = function(ctx)
 			const offset = ctx.read(1)
 			const is_present = buffer.readu8(ctx.buff, offset)
 			if is_present == 0 then

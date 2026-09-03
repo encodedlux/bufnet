@@ -1,3 +1,6 @@
+--!native
+--!optimize 2
+
 const RunService = game:GetService("RunService")
 
 const net = require("../process/net")

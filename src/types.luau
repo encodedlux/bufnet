@@ -10,7 +10,6 @@ export type BufferSave = {
 export type Writter = {
 	size: number,
 	cursor: number,
-	offset: number,
 	buff: buffer,
 	refs: { any },
 
@@ -33,6 +32,10 @@ export type Reader = {
 export type DataType<T...> = {
 	write: (ctx: Writter, T...) -> (),
 	read: (ctx: Reader) -> T...,
+
+	length: number?,
+	write_at: ((ctx: Writter, offset: number, T...) -> ())?, -- write with no alloc calls
+	read_at: ((ctx: Reader, offset: number) -> T...)?, -- read with no read calls
 }
 
 export type function DataTypeValue(ty: type)

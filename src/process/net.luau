@@ -1,9 +1,11 @@
+--!native
+--!optimize 2
+
 const RunService = game:GetService("RunService")
 const ReplicatedStorage = game:GetService("ReplicatedStorage")
 const Players = game:GetService("Players")
 
 const types = require("../types")
-const threadpool = require("./util/threadpool")
 const writter = require("./writter")
 const reader = require("./reader")
 
@@ -132,7 +134,6 @@ const function setup_remotes(namespace: string)
 	return reliable, unreliable
 end
 
-@native
 const function create_lifecycle_server(namespace: string, auto_flush: boolean?)
 	const reliable, unreliable = setup_remotes(namespace)
 
@@ -193,14 +194,16 @@ const function create_lifecycle_server(namespace: string, auto_flush: boolean?)
 			push(queue, table.pack(player, ...))
 		elseif tag == CALL_SINGLE_ASYNC then
 			if listeners[1] then
-				threadpool.spawn(listeners[1], player, ...)
+				task.spawn(listeners[1], player, ...)
 			end
 		elseif tag == CALL_SINGLE_SYNC then
 			if listeners[1] then
 				(listeners[1])(player, ...)
 			end
 		elseif tag == CALL_MANY_ASYNC then
-			threadpool.spawn_callbacks(listeners, player, ...)
+			for _, listener in listeners do
+				task.spawn(listener, player, ...)
+			end
 		elseif tag == CALL_MANY_SYNC then
 			for _, listener in listeners do
 				listener(player, ...)
@@ -297,7 +300,7 @@ const function create_lifecycle_server(namespace: string, auto_flush: boolean?)
 		reliable_custom_dispatch[i] = function(player: Player, invocation_id: number, ...)
 			const listener = reliable_listeners[i][1]
 			if listener then
-				threadpool.spawn(function(...)
+				task.spawn(function(...)
 					local ret_results: any
 					const success, err = pcall(function(...)
 						ret_results = table.pack(listener(player, ...))
@@ -342,7 +345,6 @@ const function create_lifecycle_server(namespace: string, auto_flush: boolean?)
 	}
 end
 
-@native
 const function create_lifecycle_client(namespace: string, auto_flush: boolean?)
 	const reliable, unreliable = setup_remotes(namespace)
 
@@ -370,7 +372,6 @@ const function create_lifecycle_client(namespace: string, auto_flush: boolean?)
 
 		w.size = 64
 		w.cursor = 0
-		w.offset = 0
 		w.buff = buffer.create(64)
 		table.clear(w.refs)
 	end
@@ -398,7 +399,7 @@ const function create_lifecycle_client(namespace: string, auto_flush: boolean?)
 				push_args_to_queue(queue, ...)
 				return
 			end
-			threadpool.spawn(listeners[1], ...)
+			task.spawn(listeners[1], ...)
 		elseif tag == CALL_SINGLE_SYNC then
 			if not listeners[1] then
 				push_args_to_queue(queue, ...)
@@ -410,7 +411,9 @@ const function create_lifecycle_client(namespace: string, auto_flush: boolean?)
 				push_args_to_queue(queue, ...)
 				return
 			end
-			threadpool.spawn_callbacks(listeners, ...)
+			for _, listener in listeners do
+				task.spawn(listener, ...)
+			end
 		elseif tag == CALL_MANY_SYNC then
 			if #listeners == 0 then
 				push_args_to_queue(queue, ...)
@@ -419,7 +422,7 @@ const function create_lifecycle_client(namespace: string, auto_flush: boolean?)
 			for _, listener in listeners do
 				listener(...)
 			end
-		elseif tag == CALL_FUNCTION and is_reliable then
+		elseif tag == CALL_FUNCTION then
 			reliable_custom_dispatch[i](...)
 		end
 	end

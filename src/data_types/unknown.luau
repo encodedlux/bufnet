@@ -1,14 +1,17 @@
+--!native
+--!optimize 2
+
 const types = require("../types")
 
 const unknown: types.DataType<any> = {
-	write = @native function(ctx, value)
+	write = function(ctx, value)
 		ctx.add_ref(value)
 	end,
-	read = @native function(ctx)
+	read = function(ctx)
 		return ctx.read_ref()
 	end,
 }
 
-return @native function(): types.DataType<any>
+return function()
 	return unknown
 end

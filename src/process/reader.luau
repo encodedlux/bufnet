@@ -1,3 +1,6 @@
+--!native
+--!optimize 2
+
 const types = require("../types")
 
 const function new()

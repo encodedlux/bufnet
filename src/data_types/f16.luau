@@ -1,6 +1,8 @@
+--!native
+--!optimize 2
+
 const helper = require("../process/helper")
 
-@native
 const function write_f16(b: buffer, offset: number, value: number)
 	if value > 65504 then
 		buffer.writeu16(b, offset, 0b0_11111_0000000000)
@@ -26,7 +28,6 @@ const function write_f16(b: buffer, offset: number, value: number)
 	end
 end
 
-@native
 const function read_f16(b: buffer, offset: number): number
 	const encoded = buffer.readu16(b, offset)
 	const mantissa_exponent = encoded % 0x8000

@@ -1,3 +1,6 @@
+--!native
+--!optimize 2
+
 const types = require("../types")
 
 type DT<T...> = types.DataType<T...>
@@ -44,12 +47,12 @@ const function tuple(...: DT<any>): DT<any>
 	end
 
 	return {
-		write = @native function(ctx, ...)
+		write = function(ctx, ...)
 			for i = 1, count do
 				definition[i].write(ctx, select(i, ...))
 			end
 		end,
-		read = @native function(ctx)
+		read = function(ctx)
 			const results = table.create(count)
 			for i = 1, count do
 				results[i] = definition[i].read(ctx)

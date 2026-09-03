@@ -1,3 +1,6 @@
+--!native
+--!optimize 2
+
 const types = require("../types")
 
 const null = newproxy()
@@ -6,7 +9,6 @@ const function new()
 	const ctx: types.Writter = {
 		size = 64,
 		cursor = 0,
-		offset = 0,
 		buff = buffer.create(64),
 		refs = {},
 	} :: any
@@ -15,15 +17,15 @@ const function new()
 		const in_use = ctx.cursor + bytes
 		if in_use > ctx.size then
 			while in_use > ctx.size do
-				ctx.size *= 1.5
+				ctx.size = math.floor(ctx.size * 1.5)
 			end
 			const new_buff = buffer.create(ctx.size)
 			buffer.copy(new_buff, 0, ctx.buff, 0, ctx.cursor)
 			ctx.buff = new_buff
 		end
-		ctx.offset = ctx.cursor
+		const offset = ctx.cursor
 		ctx.cursor += bytes
-		return ctx.offset
+		return offset
 	end
 
 	function ctx.save(out)
@@ -36,10 +38,9 @@ const function new()
 
 	function ctx.load(save)
 		if save then
-			ctx.size, ctx.cursor, ctx.offset, ctx.buff, ctx.refs =
-				save.size, save.cursor, save.cursor, save.buff, save.refs
+			ctx.size, ctx.cursor, ctx.buff, ctx.refs = save.size, save.cursor, save.buff, save.refs
 		else
-			ctx.size, ctx.cursor, ctx.offset, ctx.buff, ctx.refs = 64, 0, 0, buffer.create(64), {}
+			ctx.size, ctx.cursor, ctx.buff, ctx.refs = 64, 0, buffer.create(64), {}
 		end
 	end
 

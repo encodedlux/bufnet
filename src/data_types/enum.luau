@@ -1,3 +1,6 @@
+--!native
+--!optimize 2
+
 const t = require("../types")
 
 const struct = require("./struct")
@@ -14,17 +17,28 @@ const function unit_enum(definitions: { string }): t.DataType<string>
 		index_to_value[i] = v
 	end
 
+	const function write_at(ctx, offset, value)
+		const index = value_to_index[value]
+		buffer.writeu8(ctx.buff, offset, index)
+	end
+
+	const function read_at(ctx, offset)
+		const index = buffer.readu8(ctx.buff, offset)
+		return index_to_value[index]
+	end
+
 	return {
-		write = @native function(ctx, value)
-			const index = value_to_index[value]
+		write =  function(ctx, value)
 			const offset = ctx.alloc(1)
-			buffer.writeu8(ctx.buff, offset, index)
+			write_at(ctx, offset, value)
 		end,
-		read = @native function(ctx)
+		read =  function(ctx)
 			const offset = ctx.read(1)
-			const index = buffer.readu8(ctx.buff, offset)
-			return index_to_value[index]
+			return read_at(ctx, offset)
 		end,
+		length = 1,
+		write_at = write_at,
+		read_at = read_at,
 	}
 end
 
@@ -75,7 +89,7 @@ const function tagged_enum(definition: any): t.DataType<TaggedEnumType>
 	end
 
 	return {
-		write = @native function(ctx, value)
+		write =  function(ctx, value)
 			const tag = value.type
 			const tag_index = tag_to_index[tag]
 
@@ -84,7 +98,7 @@ const function tagged_enum(definition: any): t.DataType<TaggedEnumType>
 
 			struct_values[tag].write(ctx, value)
 		end,
-		read = @native function(ctx)
+		read =  function(ctx)
 			const offset = ctx.read(1)
 			const tag_index = buffer.readu8(ctx.buff, offset)
 			const tag = tags[tag_index]
@@ -97,7 +111,6 @@ const function tagged_enum(definition: any): t.DataType<TaggedEnumType>
 	}
 end
 
-@native
 const function enum(enum_type: "Unit" | "Tagged", ...): t.DataType<any>
 	if enum_type == "Unit" then
 		return unit_enum(...)
