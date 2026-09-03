@@ -12,7 +12,7 @@ type FunctClient<T..., R...> = types.FunctClient<T..., R...>
 type DefOptions = types.DefOptions
 
 const function funct<T..., R...>(props: FunctProps<T..., R...>): Funct<T..., R...>
-	local object: FunctServer<T..., R...> | FunctClient<T..., R...>
+	local object: FunctServer<T..., R...> & FunctClient<T..., R...>
 
 	const function funct_server(
 		options: DefOptions,
@@ -20,7 +20,7 @@ const function funct<T..., R...>(props: FunctProps<T..., R...>): Funct<T..., R..
 		lifecycle: net.LifecycleServer
 	): FunctServer<T..., R...>
 		if object then
-			return object :: any
+			return object
 		end
 		if side ~= "server" then
 			error("[BufNet] Function server can only be accessed from the server.")
@@ -33,13 +33,11 @@ const function funct<T..., R...>(props: FunctProps<T..., R...>): Funct<T..., R..
 
 		const server_object = {
 			[method_names["on"]] = function(callback: (Player, T...) -> R...)
-				reader.listeners = callback :: any
-
-				local invocation_queue = reader.queue
-				reader.queue = {} :: any
-				for _, args in invocation_queue do
-					lifecycle.dispatch(id, true, table.unpack(args, 1, args.n) :: any)
+				reader.listeners[1] = callback :: any
+				for _, args in reader.queue :: any do
+					lifecycle.dispatch(id, true, table.unpack(args) :: any)
 				end
+				reader.queue = {} :: any
 			end,
 		} :: any
 
@@ -53,7 +51,7 @@ const function funct<T..., R...>(props: FunctProps<T..., R...>): Funct<T..., R..
 		lifecycle: net.LifecycleClient
 	): FunctClient<T..., R...>
 		if object then
-			return object :: any
+			return object
 		end
 		if side ~= "client" then
 			error("[BufNet] Function client can only be accessed from the client.")
@@ -65,7 +63,7 @@ const function funct<T..., R...>(props: FunctProps<T..., R...>): Funct<T..., R..
 		const method_names = types.get_casing(casing :: types.DefaultCase)
 
 		const client_object = {
-			[method_names["invoke"]] = invoke :: any,
+			[method_names["invoke"]] = invoke,
 		} :: any
 
 		object = client_object

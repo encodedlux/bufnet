@@ -8,13 +8,6 @@ const function new()
 		refs_cursor = 0,
 	} :: any
 
-	function ctx.load(new_b, new_refs)
-		ctx.buff = new_b
-		ctx.cursor = 0
-		ctx.refs = new_refs or {}
-		ctx.refs_cursor = 0
-	end
-
 	function ctx.read(size)
 		const offset = ctx.cursor
 		ctx.cursor += size

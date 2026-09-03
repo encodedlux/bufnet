@@ -48,17 +48,6 @@ const function new()
 		refs[#refs + 1] = ref or null
 	end
 
-	function ctx.append(save)
-		if save.cursor <= 0 then
-			return
-		end
-		const new_offset = ctx.alloc(save.cursor)
-		buffer.copy(ctx.buff, new_offset, save.buff, 0, save.cursor)
-		if #save.refs > 0 then
-			table.move(save.refs, 1, #save.refs, #ctx.refs + 1, ctx.refs)
-		end
-	end
-
 	return ctx
 end
 

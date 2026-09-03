@@ -18,7 +18,6 @@ export type Writter = {
 	save: (out: BufferSave?) -> BufferSave,
 	load: (save: BufferSave?) -> (),
 	add_ref: (ref: any) -> (),
-	append: (save: BufferSave) -> (),
 }
 
 export type Reader = {
@@ -27,7 +26,6 @@ export type Reader = {
 	refs: { any },
 	refs_cursor: number,
 
-	load: (new_b: buffer, new_refs: { any }?) -> (),
 	read: (size: number) -> number,
 	read_ref: () -> any,
 }

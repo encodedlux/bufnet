@@ -1,21 +1,18 @@
-const helper = require("../process/helper")
 const types = require("../types")
-
-const SIZE = helper.FLOAT * 3 -- 3 float32, for R, G and B
 
 const color3: types.DataType<Color3> = {
 	write = @native function(ctx, value)
-		const offset = ctx.alloc(SIZE)
-		buffer.writef32(ctx.buff, offset, value.R)
-		buffer.writef32(ctx.buff, offset + helper.FLOAT, value.G)
-		buffer.writef32(ctx.buff, offset + helper.FLOAT * 2, value.B)
+		const offset = ctx.alloc(3)
+		buffer.writeu8(ctx.buff, offset, value.R * 255)
+		buffer.writeu8(ctx.buff, offset + 1, value.G * 255)
+		buffer.writeu8(ctx.buff, offset + 2, value.B * 255)
 	end,
 	read = @native function(ctx)
-		const offset = ctx.read(SIZE)
-		return Color3.new(
-			buffer.readf32(ctx.buff, offset),
-			buffer.readf32(ctx.buff, offset + helper.FLOAT),
-			buffer.readf32(ctx.buff, offset + helper.FLOAT * 2)
+		const offset = ctx.read(3)
+		return Color3.fromRGB(
+			buffer.readu8(ctx.buff, offset),
+			buffer.readu8(ctx.buff, offset + 1),
+			buffer.readu8(ctx.buff, offset + 2)
 		)
 	end,
 }

@@ -4,7 +4,6 @@ const Players = game:GetService("Players")
 const RunService = game:GetService("RunService")
 
 const net = require("../process/net")
-const writter = require("../process/writter")
 const types = require("../types")
 
 const side: "server" | "client" = RunService:IsServer() and "server" or "client"
@@ -17,23 +16,19 @@ type DefOptions = types.DefOptions
 
 const function event<Props, Options, T...>(props: Props & EventProps<T...>): Event<Props, Options, T...>
 	const props = props :: EventProps<T...>
-	local object: EventServer<Props, Options, T...> | EventClient<Props, Options, T...>
+	local object: EventServer<Props, Options, T...> & EventClient<Props, Options, T...>
 	const from = props.from
 	const is_reliable = props.type ~= "Unreliable"
 
-	const function write_id(w: types.Writter, id: number)
-		const cursor = w.alloc(1)
-		buffer.writeu8(w.buff, cursor, id)
-	end
-
 	const function write_unreliable(w: types.Writter, id: number, ...)
 		w.load()
-		write_id(w, id)
+		const cursor = w.alloc(1)
+		buffer.writeu8(w.buff, cursor, id)
 		props.value.write(w, ...)
-		const snapshot = w.save()
-		const buff = buffer.create(snapshot.cursor)
-		buffer.copy(buff, 0, snapshot.buff, 0, snapshot.cursor)
-		return buff, snapshot.refs
+		const buff, offset, refs = w.buff, w.cursor, w.refs
+		const new_buff = buffer.create(offset)
+		buffer.copy(new_buff, 0, buff, 0, offset)
+		return new_buff, refs
 	end
 
 	const function event_server(
@@ -56,56 +51,61 @@ const function event<Props, Options, T...>(props: Props & EventProps<T...>): Eve
 
 		const unreliable = lifecycle.unreliable
 
+		const w = lifecycle.writter
+
 		local event: EventServer<Props, Options, T...>
 		if from == "Server" then
-			const broadcast_snapshot = writter.create()
-
 			event = {
 				[method_names["fire"]] = if is_reliable
 					then function(player: Player, ...: T...)
 						lifecycle.load(player)
-						write_id(lifecycle.writter, id)
-						props.value.write(lifecycle.writter, ...)
+						const cursor = w.alloc(1)
+						buffer.writeu8(w.buff, cursor, id)
+						props.value.write(w, ...)
 						lifecycle.save(player)
 					end
 					else function(player: Player, ...: T...)
-						const buff, refs = write_unreliable(lifecycle.writter, id, ...)
-						unreliable:FireClient(player, buff, refs)
+						unreliable:FireClient(player, write_unreliable(w, id, ...))
 					end,
 				[method_names["fire_all"]] = if is_reliable
 					then function(...: T...)
-						lifecycle.writter.load()
-						write_id(lifecycle.writter, id)
-						props.value.write(lifecycle.writter, ...)
-						const snapshot = lifecycle.writter.save()
+						w.load()
+						const cursor = w.alloc(1)
+						buffer.writeu8(w.buff, cursor, id)
+						props.value.write(w, ...)
+						const buff, cursor, refs = w.buff, w.cursor, w.refs
 
 						for _, p in Players:GetPlayers() do
 							lifecycle.load(p)
-							lifecycle.writter.append(snapshot)
+							const new_offset = w.alloc(cursor)
+							buffer.copy(w.buff, new_offset, buff, 0, cursor)
+							table.move(refs, 1, #refs, #w.refs + 1, w.refs)
 							lifecycle.save(p)
 						end
 					end
 					else function(...: T...)
-						const buff, refs = write_unreliable(lifecycle.writter, id, ...)
-						unreliable:FireAllClients(buff, refs)
+						unreliable:FireAllClients(write_unreliable(w, id, ...))
 					end,
 				[method_names["fire_except"]] = if is_reliable
 					then function(except: Player, ...: T...)
-						lifecycle.writter.load()
-						write_id(lifecycle.writter, id)
-						props.value.write(lifecycle.writter, ...)
-						lifecycle.writter.save(broadcast_snapshot)
+						w.load()
+						const cursor = w.alloc(1)
+						buffer.writeu8(w.buff, cursor, id)
+						props.value.write(w, ...)
+						const buff, cursor, refs = w.buff, w.cursor, w.refs
 
 						for _, player in Players:GetPlayers() do
 							if player ~= except then
 								lifecycle.load(player)
-								lifecycle.writter.append(broadcast_snapshot)
+								const new_offset = w.alloc(cursor)
+								buffer.copy(w.buff, new_offset, buff, 0, cursor)
+								table.move(refs, 1, #refs, #w.refs + 1, w.refs)
 								lifecycle.save(player)
 							end
 						end
 					end
 					else function(except: Player, ...: T...)
-						const buff, refs = write_unreliable(lifecycle.writter, id, ...)
+						const buff, refs = write_unreliable(w, id, ...)
 						for _, player in Players:GetPlayers() do
 							if player == except then
 								continue
@@ -115,19 +115,22 @@ const function event<Props, Options, T...>(props: Props & EventProps<T...>): Eve
 					end,
 				[method_names["fire_list"]] = if is_reliable
 					then function(players: { Player }, ...: T...)
-						lifecycle.writter.load()
-						write_id(lifecycle.writter, id)
-						props.value.write(lifecycle.writter, ...)
-						lifecycle.writter.save(broadcast_snapshot)
+						w.load()
+						const cursor = w.alloc(1)
+						buffer.writeu8(w.buff, cursor, id)
+						props.value.write(w, ...)
+						const buff, cursor, refs = w.buff, w.cursor, w.refs
 
 						for _, p in players do
 							lifecycle.load(p)
-							lifecycle.writter.append(broadcast_snapshot)
+							const new_offset = w.alloc(cursor)
+							buffer.copy(w.buff, new_offset, buff, 0, cursor)
+							table.move(refs, 1, #refs, #w.refs + 1, w.refs)
 							lifecycle.save(p)
 						end
 					end
 					else function(players: { Player }, ...: T...)
-						const buff, refs = write_unreliable(lifecycle.writter, id, ...)
+						const buff, refs = write_unreliable(w, id, ...)
 						for _, player in players do
 							unreliable:FireClient(player, buff, refs)
 						end
@@ -155,21 +158,14 @@ const function event<Props, Options, T...>(props: Props & EventProps<T...>): Eve
 					[method_names["on"]] = if call == "ManyAsync" or call == "ManySync"
 						then function(callback: (player: Player, T...) -> ())
 							table.insert(reader.listeners, callback)
-
 							return function()
-								const index = table.find(reader.listeners, callback)
-								if index then
-									table.remove(reader.listeners, index)
-								end
+								table.remove(reader.listeners, table.find(reader.listeners, callback))
 							end
 						end
 						else function(callback: (player: Player, T...) -> ())
 							reader.listeners[1] = callback :: any
-
 							return function()
-								if reader.listeners[1] == callback then
-									reader.listeners[1] = nil
-								end
+								reader.listeners[1] = nil
 							end
 						end,
 				} :: any
@@ -200,6 +196,8 @@ const function event<Props, Options, T...>(props: Props & EventProps<T...>): Eve
 
 		const unreliable = lifecycle.unreliable
 
+		const w = lifecycle.writter
+
 		local event: EventClient<Props, Options, T...>
 		if from == "Server" then
 			const reader = lifecycle.register_event(id, is_reliable, call, props.value)
@@ -223,51 +221,40 @@ const function event<Props, Options, T...>(props: Props & EventProps<T...>): Eve
 					[method_names["on"]] = if call == "ManyAsync" or call == "ManySync"
 						then function(callback: (T...) -> ())
 							table.insert(reader.listeners, callback)
-
-							const event_queue = reader.queue
-							reader.queue = {} :: any
-							for _, args in event_queue do
+							for _, args in reader.queue do
 								lifecycle.dispatch(id, is_reliable, table.unpack(args, 1, args.n) :: any)
 							end
-
+							reader.queue = {} :: any
 							return function()
-								const index = table.find(reader.listeners, callback)
-								if index then
-									table.remove(reader.listeners, index)
-								end
+								table.remove(reader.listeners, table.find(reader.listeners, callback))
 							end
 						end
 						else function(callback: (T...) -> ())
 							reader.listeners[1] = callback :: any
-
 							const event_queue = reader.queue
 							reader.queue = {} :: any
 							for _, args in event_queue do
 								lifecycle.dispatch(id, is_reliable, table.unpack(args, 1, args.n) :: any)
 							end
-
 							return function()
-								if reader.listeners[1] == callback then
-									reader.listeners[1] = nil
-								end
+								reader.listeners[1] = nil
 							end
 						end,
 				} :: any
 			end
 		elseif from == "Client" then
-			const unreliable_save = writter.create()
-
 			event = {
 				[method_names["fire"]] = if is_reliable
 					then function(...: T...)
-						write_id(lifecycle.writter, id)
-						props.value.write(lifecycle.writter, ...)
+						const cursor = w.alloc(1)
+						buffer.writeu8(w.buff, cursor, id)
+						props.value.write(w, ...)
 					end
 					else function(...: T...)
-						lifecycle.writter.save(unreliable_save)
-						const buff, refs = write_unreliable(lifecycle.writter, id, ...)
+						const snapshot = w.save()
+						const buff, refs = write_unreliable(w, id, ...)
 						unreliable:FireServer(buff, refs)
-						lifecycle.writter.load(unreliable_save)
+						w.load(snapshot)
 					end,
 			} :: any
 		end

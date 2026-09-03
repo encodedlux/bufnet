@@ -215,7 +215,10 @@ const function create_lifecycle_server(namespace: string, auto_flush: boolean?)
 	const function make_process_incoming(is_reliable: boolean)
 		const read_fns = is_reliable and reliable_read_fns or unreliable_read_fns
 		return function(player: Player, b: buffer, refs: { any })
-			r.load(b, refs)
+			r.cursor = 0
+			r.buff = b
+			r.refs = refs
+			r.refs_cursor = 0
 			const size = buffer.len(r.buff)
 			if serdes_thread and coroutine.status(serdes_thread) == "suspended" then
 				warn("[BufNet]: Yielded in a Sync call. Consider using an Async call instead.")
@@ -427,7 +430,10 @@ const function create_lifecycle_client(namespace: string, auto_flush: boolean?)
 		const read_fns = is_reliable and reliable_read_fns or unreliable_read_fns
 
 		return function(b: buffer, refs: { any })
-			r.load(b, refs)
+			r.cursor = 0
+			r.buff = b
+			r.refs = refs
+			r.refs_cursor = 0
 			const size = buffer.len(r.buff)
 			if serdes_thread and coroutine.status(serdes_thread) == "suspended" then
 				warn("[BufNet]: Yielded in a Sync call. Consider using an Async call instead.")
