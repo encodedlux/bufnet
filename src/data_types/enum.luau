@@ -17,24 +17,24 @@ const function unit_enum(definitions: { string }): t.DataType<string>
 		index_to_value[i] = v
 	end
 
-	const function write_at(ctx, offset, value)
+	const function write_at(buff, offset, value)
 		const index = value_to_index[value]
-		buffer.writeu8(ctx.buff, offset, index)
+		buffer.writeu8(buff, offset, index)
 	end
 
-	const function read_at(ctx, offset)
-		const index = buffer.readu8(ctx.buff, offset)
+	const function read_at(buff, offset)
+		const index = buffer.readu8(buff, offset)
 		return index_to_value[index]
 	end
 
 	return {
 		write =  function(ctx, value)
 			const offset = ctx.alloc(1)
-			write_at(ctx, offset, value)
+			write_at(ctx.buff, offset, value)
 		end,
 		read =  function(ctx)
 			const offset = ctx.read(1)
-			return read_at(ctx, offset)
+			return read_at(ctx.buff, offset)
 		end,
 		length = 1,
 		write_at = write_at,

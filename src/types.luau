@@ -34,8 +34,8 @@ export type DataType<T...> = {
 	read: (ctx: Reader) -> T...,
 
 	length: number?,
-	write_at: ((ctx: Writter, offset: number, T...) -> ())?, -- write with no alloc calls
-	read_at: ((ctx: Reader, offset: number) -> T...)?, -- read with no read calls
+	write_at: ((buff: buffer, offset: number, T...) -> ())?, -- write with no alloc calls (fast path)
+	read_at: ((buff: buffer, offset: number) -> T...)?, -- read with no read calls (fast path)
 }
 
 export type function DataTypeValue(ty: type)

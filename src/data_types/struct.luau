@@ -8,7 +8,6 @@ const function struct<T>(schema: T & {}): t.DataType<t.DataTypeSchema<T>>
 	const schema = schema :: { [string]: t.DataType<any> }
 	const keys = {}
 	local total_length = 0
-	local has_fastpath = true
 	const fields = {}
 
 	for k in schema do
@@ -30,17 +29,15 @@ const function struct<T>(schema: T & {}): t.DataType<t.DataTypeSchema<T>>
 				read_at = fra,
 			})
 			total_length += flen
-		else
-			has_fastpath = false
 		end
 	end
 
-	return if has_fastpath then {
+	return if #fields == #keys then {
 		write = function(ctx, value)
 			const offset = ctx.alloc(total_length)
 			for i = 1, #fields do
 				local f = fields[i]
-				f.write_at(ctx, offset + f.offset, value[f.name])
+				f.write_at(ctx.buff, offset + f.offset, value[f.name])
 			end
 		end,
 		read = function(ctx)
@@ -48,7 +45,23 @@ const function struct<T>(schema: T & {}): t.DataType<t.DataTypeSchema<T>>
 			const result = {}
 			for i = 1, #fields do
 				local f = fields[i]
-				result[f.name] = f.read_at(ctx, offset + f.offset)
+				result[f.name] = f.read_at(ctx.buff, offset + f.offset)
+			end
+			return result
+		end,
+
+		length = total_length,
+		write_at = function(buff, offset, value)
+			for i = 1, #fields do
+				local f = fields[i]
+				f.write_at(buff, offset + f.offset, value[f.name])
+			end
+		end,
+		read_at = function(buff, offset)
+			local result = {}
+			for i = 1, #fields do
+				local f = fields[i]
+				result[f.name] = f.read_at(buff, offset + f.offset)
 			end
 			return result
 		end,

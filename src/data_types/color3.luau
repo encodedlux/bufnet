@@ -5,28 +5,24 @@ const types = require("../types")
 
 const BYTE_SIZE = 3
 
-const function write_at(ctx, offset, value: Color3)
-	buffer.writeu8(ctx.buff, offset, value.R * 255)
-	buffer.writeu8(ctx.buff, offset + 1, value.G * 255)
-	buffer.writeu8(ctx.buff, offset + 2, value.B * 255)
+const function write_at(buff, offset, value: Color3)
+	buffer.writeu8(buff, offset, value.R * 255)
+	buffer.writeu8(buff, offset + 1, value.G * 255)
+	buffer.writeu8(buff, offset + 2, value.B * 255)
 end
 
-const function read_at(ctx, offset)
-	return Color3.fromRGB(
-		buffer.readu8(ctx.buff, offset),
-		buffer.readu8(ctx.buff, offset + 1),
-		buffer.readu8(ctx.buff, offset + 2)
-	)
+const function read_at(buff, offset)
+	return Color3.fromRGB(buffer.readu8(buff, offset), buffer.readu8(buff, offset + 1), buffer.readu8(buff, offset + 2))
 end
 
 const color3: types.DataType<Color3> = {
 	write = function(ctx, value)
 		const offset = ctx.alloc(BYTE_SIZE)
-		write_at(ctx, offset, value)
+		write_at(ctx.buff, offset, value)
 	end,
 	read = function(ctx)
 		const offset = ctx.read(BYTE_SIZE)
-		return read_at(ctx, offset)
+		return read_at(ctx.buff, offset)
 	end,
 
 	length = BYTE_SIZE,

@@ -1,9 +1,9 @@
 [package]
 name = "encodedlux/bufnet"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 registry = "https://github.com/UpliftGames/wally-index"
 realm = "shared"
-
-[dependencies]
 exclude = ["**"]
 include = ["README.md", "src", "src/**", "default.project.json", "wally.toml"]
+
+[dependencies]

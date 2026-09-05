@@ -26,11 +26,11 @@ const function generate_number_data_type(
 		end,
 
 		length = size,
-		write_at = function(ctx, offset, value)
-			write_fn(ctx.buff, offset, value)
+		write_at = function(buff, offset, value)
+			write_fn(buff, offset, value)
 		end,
-		read_at = function(ctx, offset)
-			return read_fn(ctx.buff, offset)
+		read_at = function(buff, offset)
+			return read_fn(buff, offset)
 		end,
 	}
 
