@@ -1,0 +1,13 @@
+{
+    "name": "BufNet-test",
+    "emitLegacyScripts": false,
+    "tree": {
+        "$className": "DataModel",
+        "ReplicatedStorage": {
+            "bufnet": {
+                "$path": "src"
+            },
+            "$path": "tests/roblox"
+        }
+    }
+}

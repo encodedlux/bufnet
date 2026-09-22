@@ -1,276 +1,165 @@
 --!native
 --!optimize 2
---!nolint LocalShadow
 
 const Players = game:GetService("Players")
 const RunService = game:GetService("RunService")
 
-const net = require("../process/net")
+const constants = require("../constants")
+const casing = require("../core/casing")
+const lifecycle = require("../core/lifecycle")
+const queue = require("../core/queue")
+const serdes = require("../core/serdes")
 const types = require("../types")
 
-const side: "server" | "client" = RunService:IsServer() and "server" or "client"
-
-type EventProps<T...> = types.EventProps<T...>
-type Event<Props, Options, T...> = types.Event<Props, Options, T...>
-type EventServer<Props, Options, T...> = types.EventServer<Props, Options, T...>
-type EventClient<Props, Options, T...> = types.EventClient<Props, Options, T...>
+type EventProps = types.EventProps
+type Event<Props, Options> = types.Event<Props, Options>
+type EventServer<Props, Options> = types.EventServer<Props, Options>
+type EventClient<Props, Options> = types.EventClient<Props, Options>
 type DefOptions = types.DefOptions
 
-const function event<Props, Options, T...>(props: Props & EventProps<T...>): Event<Props, Options, T...>
-	const props = props :: EventProps<T...>
-	local object: EventServer<Props, Options, T...> & EventClient<Props, Options, T...>
+const IS_SERVER = RunService:IsServer()
+const ROOT_SCOPE_NAME = constants.ROOT_SCOPE_NAME
+
+const function event<Props, Options>(props: Props & EventProps): Event<Props, Options>
+	props = props :: EventProps
 	const from = props.from
 	const is_reliable = props.type ~= "Unreliable"
+	const args: { types.DataType } = if typeof(props.value) == "function"
+		then { (props :: any).value() }
+		elseif props.value ~= nil then { props.value }
+		else {}
 
-	const function write_unreliable(w: types.Writter, id: number, ...)
-		w.load()
-		const cursor = w.alloc(1)
-		buffer.writeu8(w.buff, cursor, id)
-		props.value.write(w, ...)
-		const buff, offset, refs = w.buff, w.cursor, w.refs
-		const new_buff = buffer.create(offset)
-		buffer.copy(new_buff, 0, buff, 0, offset)
-		return new_buff, refs
-	end
+	local object: EventServer<Props, Options> & EventClient<Props, Options>
 
 	const function event_server(
 		options: DefOptions,
-		id: number,
-		lifecycle: net.LifecycleServer
-	): EventServer<Props, Options, T...>
+		path: string,
+		lifecycle: lifecycle.Lifecycle
+	): EventServer<Props, Options>
 		if object then
 			return object
 		end
-		if side ~= "server" then
-			error("[BufNet] Event server can only be accessed from the server.")
+		if not IS_SERVER then
+			error(`[{ROOT_SCOPE_NAME}]: Event server can only be accessed from the server.`)
 		end
 
-		const casing = options.casing or types.default_case
-		const call = props.call or options.default_call or types.default_call
-		const use_polling = call == "Polling"
+		const saves = if is_reliable then lifecycle.players_reliable else lifecycle.players_unreliable
+		const call = props.call or options.default_call or constants.default_call
+		const method_names = casing.get_casing(options.casing)
+		const id, reader = lifecycle.register_event(path, is_reliable, call, args, from ~= "Server")
 
-		const method_names = types.get_casing(casing :: types.DefaultCase)
-
-		const unreliable = lifecycle.unreliable
-
-		const w = lifecycle.writter
-
-		local event: EventServer<Props, Options, T...>
-		if from == "Server" then
-			event = {
-				[method_names["fire"]] = if is_reliable
-					then function(player: Player, ...: T...)
-						lifecycle.load(player)
-						const cursor = w.alloc(1)
-						buffer.writeu8(w.buff, cursor, id)
-						props.value.write(w, ...)
-						lifecycle.save(player)
+		const server_object: { [string]: any } = {}
+		if from ~= "Client" then
+			server_object[method_names["fire"]] = function(player: Player, ...)
+				serdes.write_event(saves[player], args, id, ...)
+			end
+			server_object[method_names["fire_all"]] = function(...)
+				serdes.write_event_to_players(Players:GetPlayers(), args, id, saves, nil, ...)
+			end
+			server_object[method_names["fire_except"]] = function(except: Player, ...)
+				serdes.write_event_to_players(Players:GetPlayers(), args, id, saves, except, ...)
+			end
+			server_object[method_names["fire_list"]] = function(players: { Player }, ...)
+				serdes.write_event_to_players(players, args, id, saves, nil, ...)
+			end
+		end
+		if from ~= "Server" then
+			if call == "Polling" then
+				server_object[method_names["iter"]] = function()
+					local index = 0
+					return function()
+						index += 1
+						const args = queue.pop(reader.polling_queue)
+						if args then
+							return index, table.unpack(args, 1, args.n)
+						end
+						return nil :: any
 					end
-					else function(player: Player, ...: T...)
-						unreliable:FireClient(player, write_unreliable(w, id, ...))
-					end,
-				[method_names["fire_all"]] = if is_reliable
-					then function(...: T...)
-						w.load()
-						const cursor = w.alloc(1)
-						buffer.writeu8(w.buff, cursor, id)
-						props.value.write(w, ...)
-						const buff, cursor, refs = w.buff, w.cursor, w.refs
-
-						for _, p in Players:GetPlayers() do
-							lifecycle.load(p)
-							const new_offset = w.alloc(cursor)
-							buffer.copy(w.buff, new_offset, buff, 0, cursor)
-							table.move(refs, 1, #refs, #w.refs + 1, w.refs)
-							lifecycle.save(p)
-						end
-					end
-					else function(...: T...)
-						unreliable:FireAllClients(write_unreliable(w, id, ...))
-					end,
-				[method_names["fire_except"]] = if is_reliable
-					then function(except: Player, ...: T...)
-						w.load()
-						const cursor = w.alloc(1)
-						buffer.writeu8(w.buff, cursor, id)
-						props.value.write(w, ...)
-						const buff, cursor, refs = w.buff, w.cursor, w.refs
-
-						for _, player in Players:GetPlayers() do
-							if player ~= except then
-								lifecycle.load(player)
-								const new_offset = w.alloc(cursor)
-								buffer.copy(w.buff, new_offset, buff, 0, cursor)
-								table.move(refs, 1, #refs, #w.refs + 1, w.refs)
-								lifecycle.save(player)
-							end
-						end
-					end
-					else function(except: Player, ...: T...)
-						const buff, refs = write_unreliable(w, id, ...)
-						for _, player in Players:GetPlayers() do
-							if player == except then
-								continue
-							end
-							unreliable:FireClient(player, buff, refs)
-						end
-					end,
-				[method_names["fire_list"]] = if is_reliable
-					then function(players: { Player }, ...: T...)
-						w.load()
-						const cursor = w.alloc(1)
-						buffer.writeu8(w.buff, cursor, id)
-						props.value.write(w, ...)
-						const buff, cursor, refs = w.buff, w.cursor, w.refs
-
-						for _, p in players do
-							lifecycle.load(p)
-							const new_offset = w.alloc(cursor)
-							buffer.copy(w.buff, new_offset, buff, 0, cursor)
-							table.move(refs, 1, #refs, #w.refs + 1, w.refs)
-							lifecycle.save(p)
-						end
-					end
-					else function(players: { Player }, ...: T...)
-						const buff, refs = write_unreliable(w, id, ...)
-						for _, player in players do
-							unreliable:FireClient(player, buff, refs)
-						end
-					end,
-			} :: any
-		elseif from == "Client" then
-			const reader = lifecycle.register_event(id, is_reliable, call, props.value)
-
-			if use_polling then
-				event = {
-					[method_names["iter"]] = function()
-						local index = 0
-						return function()
-							index += 1
-							const args = net.queue_pop(reader.queue)
-							if args then
-								return index, table.unpack(args, 1, args.n)
-							end
-							return nil :: any
-						end
-					end,
-				} :: any
+				end
 			else
-				event = {
-					[method_names["on"]] = if call == "ManyAsync" or call == "ManySync"
-						then function(callback: (player: Player, T...) -> ())
-							table.insert(reader.listeners, callback)
-							return function()
-								table.remove(reader.listeners, table.find(reader.listeners, callback))
-							end
+				server_object[method_names["on"]] = function(callback)
+					table.insert(reader.listeners, callback)
+					for _, args in reader.queue do
+						lifecycle.dispatch(id, is_reliable, table.unpack(args, 1, args.n))
+					end
+					table.clear(reader.queue)
+					return function()
+						const idx = table.find(reader.listeners, callback)
+						if idx then
+							table.remove(reader.listeners, idx)
 						end
-						else function(callback: (player: Player, T...) -> ())
-							reader.listeners[1] = callback :: any
-							return function()
-								reader.listeners[1] = nil
-							end
-						end,
-				} :: any
+					end
+				end
 			end
 		end
 
-		object = event
+		object = server_object :: any
 		return object
 	end
+
 	const function event_client(
 		options: DefOptions,
-		id: number,
-		lifecycle: net.LifecycleClient
-	): EventClient<Props, Options, T...>
+		path: string,
+		lifecycle: lifecycle.Lifecycle
+	): EventClient<Props, Options>
 		if object then
 			return object
 		end
-		if side ~= "client" then
-			error("[BufNet] Event client can only be accessed from the client.")
+		if IS_SERVER then
+			error(`[{ROOT_SCOPE_NAME}]: Event client can only be accessed from the client.`)
 		end
 
-		const from = props.from
-		const casing = options.casing or types.default_case
-		const call = props.call or options.default_call or types.default_call
-		const use_polling = call == "Polling"
+		const save = is_reliable and lifecycle.get_client_reliable() or lifecycle.get_client_unreliable()
+		const call = props.call or options.default_call or constants.default_call
+		const method_names = casing.get_casing(options.casing)
+		const id, reader = lifecycle.register_event(path, is_reliable, call, args, from ~= "Client")
 
-		const method_names = types.get_casing(casing :: types.DefaultCase)
-
-		const unreliable = lifecycle.unreliable
-
-		const w = lifecycle.writter
-
-		local event: EventClient<Props, Options, T...>
-		if from == "Server" then
-			const reader = lifecycle.register_event(id, is_reliable, call, props.value)
-
-			if use_polling then
-				event = {
-					[method_names["iter"]] = function()
-						local index = 0
-						return function()
-							index += 1
-							const args = net.queue_pop(reader.queue)
-							if args then
-								return index, table.unpack(args, 1, args.n)
-							end
-							return nil :: any
+		const client_object: { [string]: any } = {}
+		if from ~= "Client" then
+			if call == "Polling" then
+				client_object[method_names["iter"]] = function()
+					local index = 0
+					return function()
+						index += 1
+						const args = queue.pop(reader.polling_queue)
+						if args then
+							return index, table.unpack(args, 1, args.n)
 						end
-					end,
-				} :: any
-			else
-				event = {
-					[method_names["on"]] = if call == "ManyAsync" or call == "ManySync"
-						then function(callback: (T...) -> ())
-							table.insert(reader.listeners, callback)
-							for _, args in reader.queue do
-								lifecycle.dispatch(id, is_reliable, table.unpack(args, 1, args.n) :: any)
-							end
-							reader.queue = {} :: any
-							return function()
-								table.remove(reader.listeners, table.find(reader.listeners, callback))
-							end
-						end
-						else function(callback: (T...) -> ())
-							reader.listeners[1] = callback :: any
-							const event_queue = reader.queue
-							reader.queue = {} :: any
-							for _, args in event_queue do
-								lifecycle.dispatch(id, is_reliable, table.unpack(args, 1, args.n) :: any)
-							end
-							return function()
-								reader.listeners[1] = nil
-							end
-						end,
-				} :: any
-			end
-		elseif from == "Client" then
-			event = {
-				[method_names["fire"]] = if is_reliable
-					then function(...: T...)
-						const cursor = w.alloc(1)
-						buffer.writeu8(w.buff, cursor, id)
-						props.value.write(w, ...)
+						return nil :: any
 					end
-					else function(...: T...)
-						const snapshot = w.save()
-						const buff, refs = write_unreliable(w, id, ...)
-						unreliable:FireServer(buff, refs)
-						w.load(snapshot)
-					end,
-			} :: any
+				end
+			else
+				client_object[method_names["on"]] = function(callback)
+					table.insert(reader.listeners, callback)
+					for _, args in reader.queue do
+						lifecycle.dispatch(id, is_reliable, table.unpack(args, 1, args.n))
+					end
+					table.clear(reader.queue)
+					return function()
+						const idx = table.find(reader.listeners, callback)
+						if idx then
+							table.remove(reader.listeners, idx)
+						end
+					end
+				end
+			end
+		end
+		if from ~= "Server" then
+			client_object[method_names["fire"]] = function(...)
+				serdes.write_event(save, args, id, ...)
+			end
 		end
 
-		object = event
+		object = client_object :: any
 		return object
 	end
 
 	return {
 		type = "event",
-		reliable = is_reliable,
+		props = props,
 		server = event_server,
 		client = event_client,
-	} :: any
+	}
 end
 
 return event
