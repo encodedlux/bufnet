@@ -1,6 +1,6 @@
 [package]
 name = "encodedlux/bufnet"
-version = "0.1.0-rc.8"
+version = "0.1.0"
 registry = "https://github.com/UpliftGames/wally-index"
 realm = "shared"
 exclude = ["**"]
