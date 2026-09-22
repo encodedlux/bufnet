@@ -1,5 +1,6 @@
 [package]
 name = "encodedlux/bufnet"
+description = "Lightweight networking library for Roblox built for performance, type safety and efficient data communication."
 version = "0.1.0"
 registry = "https://github.com/UpliftGames/wally-index"
 realm = "shared"

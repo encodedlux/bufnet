@@ -73,7 +73,7 @@ Default: `Async`
 Options: `Async`, `Sync`, `Polling`
 
 ### `auto_flush`
-Reliable calls are combined into a single delivery once per frame. When set to `false`, the automatic send is disabled and you become responsible for calling `flush()` — exposed on both `.server()` and `.client()` returns.
+Reliable and Unreliable calls are combined into a single delivery once per frame. When set to `false`, the automatic send is disabled and you become responsible for calling `flush()` — exposed on both `.server()` and `.client()` returns.
 
 Default: `true`
 
