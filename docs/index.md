@@ -19,8 +19,8 @@ hero:
       link: https://github.com/encodedlux/bufnet
 
 features:
-  - title: "Typed Networking"
-    details: "Define exactly what your data looks like and get a networking layer that stays type-safe from definition to usage."
+  - title: "Typed Features"
+    details: "Support the new type-solver and utilize the latest type features (such as type functions) to improve developer experience."
   - title: "Efficient by Design"
     details: "Send structured data efficiently with a networking layer designed to keep payloads compact and communication fast."
   - title: "Simple API"

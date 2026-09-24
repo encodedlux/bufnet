@@ -327,8 +327,8 @@ const function array<T>(value_type: DataType<T>)
 		end
 		else @native function(value: { T }): number
 			local total = SHORT
-			for _, v in value do
-				total += value_size(v)
+			for i = 1, #value do
+				total += value_size(value[i])
 			end
 			return total
 		end
@@ -336,8 +336,8 @@ const function array<T>(value_type: DataType<T>)
 	return create_data_type<<{ T }>>(@native function(buff, offset, value, refs)
 		writeu16(buff, offset, #value)
 		local current_offset = offset + SHORT
-		for _, v in value do
-			current_offset += value_write(buff, current_offset, v, refs)
+		for i = 1, #value do
+			current_offset += value_write(buff, current_offset, value[i], refs)
 		end
 		return current_offset - offset
 	end, @native function(buff, offset, refs)
@@ -359,6 +359,7 @@ end
 
 const function struct<T>(schema: T)
 	schema = schema :: { read [string]: DataType<any> }
+
 	const keys: { string } = {}
 	const value_writes: { index<DataType<DataTypeSchema<T>>, "write"> } = {}
 	const value_reads: { index<DataType<DataTypeSchema<T>>, "read"> } = {}
@@ -389,8 +390,9 @@ const function struct<T>(schema: T)
 		then fixed_total
 		else @native function(value)
 			local total = fixed_total
-			for _, i in variable_indices do
-				total += (value_sizes[i] :: any)(value[keys[i]])
+			for i = 1, #variable_indices do
+				const idx = variable_indices[i]
+				total += (value_sizes[idx] :: any)(value[keys[idx]])
 			end
 			return total
 		end

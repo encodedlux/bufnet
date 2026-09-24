@@ -46,21 +46,21 @@ const function event<Props, Options>(props: Props & EventProps): Event<Props, Op
 		const saves = if is_reliable then lifecycle.players_reliable else lifecycle.players_unreliable
 		const call = props.call or options.default_call or constants.default_call
 		const method_names = casing.get_casing(options.casing)
-		const id, reader = lifecycle.register_event(path, is_reliable, call, args, from ~= "Server")
+		const id, reader, write = lifecycle.register_event(path, is_reliable, call, args)
 
 		const server_object: { [string]: any } = {}
 		if from ~= "Client" then
 			server_object[method_names["fire"]] = function(player: Player, ...)
-				serdes.write_event(saves[player], args, id, ...)
+				write(saves[player], ...)
 			end
 			server_object[method_names["fire_all"]] = function(...)
-				serdes.write_event_to_players(Players:GetPlayers(), args, id, saves, nil, ...)
+				serdes.write_event_to_players(Players:GetPlayers(), saves, write, nil, ...)
 			end
 			server_object[method_names["fire_except"]] = function(except: Player, ...)
-				serdes.write_event_to_players(Players:GetPlayers(), args, id, saves, except, ...)
+				serdes.write_event_to_players(Players:GetPlayers(), saves, write, except, ...)
 			end
 			server_object[method_names["fire_list"]] = function(players: { Player }, ...)
-				serdes.write_event_to_players(players, args, id, saves, nil, ...)
+				serdes.write_event_to_players(players, saves, write, nil, ...)
 			end
 		end
 		if from ~= "Server" then
@@ -112,7 +112,7 @@ const function event<Props, Options>(props: Props & EventProps): Event<Props, Op
 		const save = is_reliable and lifecycle.get_client_reliable() or lifecycle.get_client_unreliable()
 		const call = props.call or options.default_call or constants.default_call
 		const method_names = casing.get_casing(options.casing)
-		const id, reader = lifecycle.register_event(path, is_reliable, call, args, from ~= "Client")
+		const id, reader, write = lifecycle.register_event(path, is_reliable, call, args)
 
 		const client_object: { [string]: any } = {}
 		if from ~= "Client" then
@@ -146,7 +146,7 @@ const function event<Props, Options>(props: Props & EventProps): Event<Props, Op
 		end
 		if from ~= "Server" then
 			client_object[method_names["fire"]] = function(...)
-				serdes.write_event(save, args, id, ...)
+				write(save, ...)
 			end
 		end
 

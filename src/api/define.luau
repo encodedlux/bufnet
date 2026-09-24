@@ -17,18 +17,17 @@ type DefObjects = {
 const IS_SERVER = RunService:IsServer()
 const ROOT_SCOPE_NAME = constants.ROOT_SCOPE_NAME
 
+const names_cache: { [string]: true } = {}
+
 const function define<Objects, Options>(
 	name: string,
 	objects: Objects & DefObjects,
 	options: (Options & DefOptions)?
 ): Def<Objects, Options>
-	_G[`_{ROOT_SCOPE_NAME}`] = _G[`_{ROOT_SCOPE_NAME}`] or {}
-	if _G[`_{ROOT_SCOPE_NAME}`][name:upper()] then
-		error(
-			`[{ROOT_SCOPE_NAME}]: A definition is already running with the namespace "{name}". Change the namespace of this definition to avoid conflicts.`
-		)
+	if names_cache[name] then
+		error(`[{ROOT_SCOPE_NAME}]: "{name}" has already been defined.`)
 	end
-	_G[`_{ROOT_SCOPE_NAME}`][name:upper()] = true
+	names_cache[name] = true
 
 	const opt: DefOptions = options or {}
 	const method_names = casing.get_casing(opt.casing)
@@ -47,7 +46,7 @@ const function define<Objects, Options>(
 			end
 			const resolved = {}
 			for k, v: DefObjects in node do
-				const next_path = path .. "_" .. k
+				const next_path = if path ~= "" then path .. "." .. k else k
 				resolved[k] = resolve_objects_recursive(v, next_path, lifecycle)
 			end
 			return resolved

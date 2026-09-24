@@ -156,11 +156,11 @@ const function state<T>(props: StateProps<T>): State<T>
 
 		const saves = lifecycle.players_reliable
 		const method_names = casing.get_casing(options.casing)
-		const id, reader = lifecycle.register_event(path, true, "Sync", value_args)
+		const _id, reader, write = lifecycle.register_event(path, true, "Sync", value_args)
 
 		reader.listeners[1] = function(player: Player, data)
 			if data.type == "request" then
-				serdes.write_event(saves[player], value_args, id, {
+				write(saves[player], {
 					type = "dispatch",
 					value = if filter_fn then filter_fn(cache, player) else cache,
 				})
@@ -170,19 +170,13 @@ const function state<T>(props: StateProps<T>): State<T>
 		const function send_all(value: T)
 			if filter_fn then
 				for _, player in Players:GetPlayers() do
-					serdes.write_event(
-						saves[player],
-						value_args,
-						id,
-						{ type = "dispatch", value = filter_fn(value, player) }
-					)
+					write(saves[player], { type = "dispatch", value = filter_fn(value, player) })
 				end
 			else
 				serdes.write_event_to_players(
 					Players:GetPlayers(),
-					value_args,
-					id,
 					saves,
+					write,
 					nil,
 					{ type = "dispatch", value = value }
 				)
@@ -224,9 +218,9 @@ const function state<T>(props: StateProps<T>): State<T>
 		end
 
 		const method_names = casing.get_casing(options.casing)
-		const id, reader = lifecycle.register_event(path, true, "Sync", value_args)
+		const _id, reader, write = lifecycle.register_event(path, true, "Sync", value_args)
 
-		serdes.write_event(lifecycle.get_client_reliable(), value_args, id, { type = "request" })
+		write(lifecycle.get_client_reliable(), { type = "request" })
 
 		reader.listeners[1] = function(data)
 			if data.type == "dispatch" then

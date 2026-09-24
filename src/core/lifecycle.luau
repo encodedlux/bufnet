@@ -1,6 +1,7 @@
 --!native
 --!optimize 2
 
+const HttpService = game:GetService("HttpService")
 const Players = game:GetService("Players")
 const ReplicatedStorage = game:GetService("ReplicatedStorage")
 const RunService = game:GetService("RunService")
@@ -17,44 +18,74 @@ type Queue = queue.Queue
 
 const IS_SERVER = RunService:IsServer()
 const ROOT_SCOPE_NAME = constants.ROOT_SCOPE_NAME
+const ROOT_SCRIPT = constants.ROOT_SCRIPT
 
 const push = queue.push
 const create_queue = queue.create
-const create_save = serdes.create_save
 const read_args = serdes.read_args
-const write_funct_invoke = serdes.write_funct_invoke
-const write_funct_ret = serdes.write_funct_ret
-const process_incoming_server = serdes.process_incoming_server
-const process_incoming_client = serdes.process_incoming_client
 const spawn = threadpool.spawn
 const spawn_callbacks = threadpool.spawn_callbacks
 
 const readu8 = buffer.readu8
 const buffer_create, buffer_copy = buffer.create, buffer.copy
 
+const function create_save(): BufferSave
+	return { size = 256, cursor = 0, buff = buffer_create(256), refs = {} }
+end
+
 const function get_root_folder(parent: Instance): Instance
-	const found = parent:FindFirstChild(ROOT_SCOPE_NAME)
+	const folder_name = ROOT_SCOPE_NAME .. "Remotes"
+
+	if not IS_SERVER then
+		return parent:WaitForChild(folder_name)
+	end
+	const found = parent:FindFirstChild(folder_name)
 	if found then
 		return found
 	end
 
 	const made = Instance.new("Folder")
-	made.Name = ROOT_SCOPE_NAME
+	made.Name = folder_name
 	made.Parent = parent
 	return made
 end
 
-const function setup_remotes(namespace: string)
-	const rel_name = namespace:upper() .. "_RELIABLE"
-	const unrel_name = namespace:upper() .. "_UNRELIABLE"
+const function get_remote_names(namespace: string)
+	const rel_attribute = namespace .. "_rel"
+	const unrel_attribute = namespace .. "_unrel"
 
-	const parent = ReplicatedStorage
+	local rel_name: string
+	local unrel_name: string
+
+	if IS_SERVER then
+		rel_name = HttpService:GenerateGUID(false)
+		unrel_name = HttpService:GenerateGUID(false)
+		ROOT_SCRIPT:SetAttribute(rel_attribute, rel_name)
+		ROOT_SCRIPT:SetAttribute(unrel_attribute, unrel_name)
+	else
+		rel_name = ROOT_SCRIPT:GetAttribute(rel_attribute) :: string
+		if not rel_name then
+			ROOT_SCRIPT:GetAttributeChangedSignal(rel_attribute):Wait()
+			rel_name = ROOT_SCRIPT:GetAttribute(rel_attribute) :: string
+		end
+		unrel_name = ROOT_SCRIPT:GetAttribute(unrel_attribute) :: string
+		if not unrel_name then
+			ROOT_SCRIPT:GetAttributeChangedSignal(unrel_attribute):Wait()
+			unrel_name = ROOT_SCRIPT:GetAttribute(unrel_attribute) :: string
+		end
+	end
+
+	return rel_name, unrel_name
+end
+
+const function setup_remotes(namespace: string)
+	const rel_name, unrel_name = get_remote_names(namespace)
+	const root = get_root_folder(ReplicatedStorage)
 
 	local reliable: RemoteEvent
 	local unreliable: UnreliableRemoteEvent
 
 	if IS_SERVER then
-		const root = get_root_folder(parent)
 		reliable = root:FindFirstChild(rel_name) :: RemoteEvent
 		if not reliable then
 			reliable = Instance.new("RemoteEvent")
@@ -69,7 +100,6 @@ const function setup_remotes(namespace: string)
 			unreliable.Parent = root
 		end
 	else
-		const root = parent:WaitForChild(ROOT_SCOPE_NAME)
 		reliable = root:WaitForChild(rel_name) :: RemoteEvent
 		unreliable = root:WaitForChild(unrel_name) :: UnreliableRemoteEvent
 	end
@@ -81,16 +111,16 @@ const function lifecycle(namespace: string, auto_flush: boolean?)
 	const reliable, unreliable = setup_remotes(namespace)
 	local reliable_id_count = 0
 	local unreliable_id_count = 0
-	const listeners_reliable = table.create(256) :: { [number]: { (...any) -> ...any } }
-	const listeners_unreliable = table.create(256) :: { [number]: { (...any) -> ...any } }
-	const polling_queues_reliable = {} :: { [number]: Queue }
-	const polling_queues_unreliable = {} :: { [number]: Queue }
-	const queues_reliable = table.create(256) :: { [number]: { any } }
-	const queues_unreliable = table.create(256) :: { [number]: { any } }
-	const read_fns_reliable = table.create(256) :: { [number]: (...any) -> (number, ...any) }
-	const read_fns_unreliable = table.create(256) :: { [number]: (...any) -> (number, ...any) }
-	const dispatches_reliable = table.create(256) :: { [number]: (...any) -> () }
-	const dispatches_unreliable = table.create(256) :: { [number]: (...any) -> () }
+	const listeners_reliable = table.create<<{ (...any) -> ...any }>>(256)
+	const listeners_unreliable = table.create<<{ (...any) -> ...any }>>(256)
+	const polling_queues_reliable: { [number]: Queue } = {}
+	const polling_queues_unreliable: { [number]: Queue } = {}
+	const queues_reliable = table.create<<{ any }>>(256)
+	const queues_unreliable = table.create<<{ any }>>(256)
+	const read_fns_reliable = table.create<<(...any) -> (number, ...any)>>(256)
+	const read_fns_unreliable = table.create<<(...any) -> (number, ...any)>>(256)
+	const dispatches_reliable = table.create<<(...any) -> ()>>(256)
+	const dispatches_unreliable = table.create<<(...any) -> ()>>(256)
 
 	const registered_names: { [string]: true } = {}
 
@@ -166,8 +196,8 @@ const function lifecycle(namespace: string, auto_flush: boolean?)
 		else
 			flush_fn = flush
 		end
-		reliable.OnServerEvent:Connect(process_incoming_server(read_fns_reliable, dispatches_reliable))
-		unreliable.OnServerEvent:Connect(process_incoming_server(read_fns_unreliable, dispatches_unreliable))
+		reliable.OnServerEvent:Connect(serdes.process_incoming_server(read_fns_reliable, dispatches_reliable))
+		unreliable.OnServerEvent:Connect(serdes.process_incoming_server(read_fns_unreliable, dispatches_unreliable))
 	else
 		client_reliable = create_save()
 		client_unreliable = create_save()
@@ -202,8 +232,8 @@ const function lifecycle(namespace: string, auto_flush: boolean?)
 		else
 			flush_fn = flush
 		end
-		reliable.OnClientEvent:Connect(process_incoming_client(read_fns_reliable, dispatches_reliable))
-		unreliable.OnClientEvent:Connect(process_incoming_client(read_fns_unreliable, dispatches_unreliable))
+		reliable.OnClientEvent:Connect(serdes.process_incoming_client(read_fns_reliable, dispatches_reliable))
+		unreliable.OnClientEvent:Connect(serdes.process_incoming_client(read_fns_unreliable, dispatches_unreliable))
 	end
 
 	const function dispatch(id: number, is_reliable: boolean, ...)
@@ -255,31 +285,19 @@ const function lifecycle(namespace: string, auto_flush: boolean?)
 		return id :: number
 	end
 
-	const function register_event(
-		path: string,
-		is_reliable: boolean,
-		call: t.EventCall,
-		event_args: { DataType },
-		can_read: boolean?
-	): (number, {
-		listeners: { (...any) -> ...any },
-		polling_queue: Queue,
-		queue: { any },
-	})
+	const function register_event(path: string, is_reliable: boolean, call: t.EventCall, event_args: { DataType })
 		assert(registered_names[path] == nil, `[{ROOT_SCOPE_NAME}]: Event "{path}" is already registered`)
 		registered_names[path] = true
 
 		const id = is_reliable and get_rel_id(path) or get_unrel_id(path)
-		can_read = can_read ~= false
-		if not can_read then
-			return id :: any
-		end
 
 		const listeners = is_reliable and listeners_reliable or listeners_unreliable
 		const polling_queues = is_reliable and polling_queues_reliable or polling_queues_unreliable
 		const queues = is_reliable and queues_reliable or queues_unreliable
 		const read_fns = is_reliable and read_fns_reliable or read_fns_unreliable
 		const dispatches = is_reliable and dispatches_reliable or dispatches_unreliable
+
+		const write_event = serdes.compile_write_event(event_args, id)
 
 		read_fns[id] = function(buff, offset, refs)
 			return read_args(event_args, buff, offset, refs)
@@ -319,11 +337,13 @@ const function lifecycle(namespace: string, auto_flush: boolean?)
 				spawn_callbacks(event_listeners, ...)
 			end
 
-		return id, {
+		const returns = {
 			listeners = event_listeners,
 			polling_queue = event_polling_queue,
 			queue = event_queue,
 		}
+
+		return id, returns, write_event
 	end
 
 	const function register_funct_server(path: string, value_args: { DataType }, ret_args: { DataType })
@@ -331,6 +351,7 @@ const function lifecycle(namespace: string, auto_flush: boolean?)
 		registered_names[path] = true
 
 		const id = get_rel_id(path)
+		const write_funct_ret = serdes.compile_write_funct_ret(ret_args, id)
 
 		const function handle_funct_return(invocation_id: number, bytes: number, ...)
 			return 1 + bytes, invocation_id, ...
@@ -365,8 +386,6 @@ const function lifecycle(namespace: string, auto_flush: boolean?)
 				end, ...)
 				write_funct_ret(
 					players_reliable[player],
-					ret_args,
-					id,
 					invocation_id,
 					success == true,
 					tostring(err),
@@ -388,6 +407,7 @@ const function lifecycle(namespace: string, auto_flush: boolean?)
 		registered_names[path] = true
 
 		const id = get_rel_id(path)
+		const write_funct_invoke = serdes.compile_write_funct_invoke(value_args, id)
 
 		const function handle_funct_return(invocation_id: number, success: boolean, bytes: number, ...)
 			return 2 + bytes, success, invocation_id, ...
@@ -423,7 +443,7 @@ const function lifecycle(namespace: string, auto_flush: boolean?)
 				invocations -= 1
 				error(`[{ROOT_SCOPE_NAME}]: More than 256 pending calls. Packet dropped.`)
 			end
-			write_funct_invoke(client_reliable, value_args, id, invocation_id, ...)
+			write_funct_invoke(client_reliable, invocation_id, ...)
 			calls[invocation_id] = coroutine.running()
 			return handle_result(coroutine.yield())
 		end
