@@ -22,7 +22,6 @@ const ROOT_SCRIPT = constants.ROOT_SCRIPT
 
 const push = queue.push
 const create_queue = queue.create
-const read_args = serdes.read_args
 const spawn = threadpool.spawn
 const spawn_callbacks = threadpool.spawn_callbacks
 
@@ -299,9 +298,7 @@ const function lifecycle(namespace: string, auto_flush: boolean?)
 
 		const write_event = serdes.compile_write_event(event_args, id)
 
-		read_fns[id] = function(buff, offset, refs)
-			return read_args(event_args, buff, offset, refs)
-		end
+		read_fns[id] = serdes.compile_read_args(event_args)
 
 		const event_listeners = {} :: { (...any) -> ...any }
 		const event_polling_queue = (if call == "Polling" then create_queue() else nil) :: Queue
@@ -352,6 +349,7 @@ const function lifecycle(namespace: string, auto_flush: boolean?)
 
 		const id = get_rel_id(path)
 		const write_funct_ret = serdes.compile_write_funct_ret(ret_args, id)
+		const read_args = serdes.compile_read_args(value_args)
 
 		const function handle_funct_return(invocation_id: number, bytes: number, ...)
 			return 1 + bytes, invocation_id, ...
@@ -359,7 +357,7 @@ const function lifecycle(namespace: string, auto_flush: boolean?)
 
 		read_fns_reliable[id] = function(buff, offset, refs)
 			const invocation_id = readu8(buff, offset)
-			return handle_funct_return(invocation_id, read_args(value_args, buff, offset + 1, refs))
+			return handle_funct_return(invocation_id, read_args(buff, offset + 1, refs))
 		end :: any
 
 		const funct_listeners = {} :: { (...any) -> ...any }
@@ -384,13 +382,17 @@ const function lifecycle(namespace: string, auto_flush: boolean?)
 				const success, err = pcall(function(...)
 					ret_results = table.pack(callback(player, ...))
 				end, ...)
-				write_funct_ret(
-					players_reliable[player],
-					invocation_id,
-					success == true,
-					tostring(err),
-					if ret_results then table.unpack(ret_results, 1, ret_results.n) else nil
-				)
+				if ret_results then
+					write_funct_ret(
+						players_reliable[player],
+						invocation_id,
+						success == true,
+						tostring(err),
+						table.unpack(ret_results, 1, ret_results.n)
+					)
+				else
+					write_funct_ret(players_reliable[player], invocation_id, success == true, tostring(err), nil)
+				end
 			end
 			task.spawn(function(): ()
 				const queue = funct_queue or {}
@@ -408,6 +410,7 @@ const function lifecycle(namespace: string, auto_flush: boolean?)
 
 		const id = get_rel_id(path)
 		const write_funct_invoke = serdes.compile_write_funct_invoke(value_args, id)
+		const read_args = serdes.compile_read_args(ret_args)
 
 		const function handle_funct_return(invocation_id: number, success: boolean, bytes: number, ...)
 			return 2 + bytes, success, invocation_id, ...
@@ -419,7 +422,7 @@ const function lifecycle(namespace: string, auto_flush: boolean?)
 			if not success then
 				return 2, false, invocation_id
 			end
-			return handle_funct_return(invocation_id, success, read_args(ret_args, buff, offset + 2, refs))
+			return handle_funct_return(invocation_id, success, read_args(buff, offset + 2, refs))
 		end :: any
 
 		dispatches_reliable[id] = function(success, invocation_id, ...)
