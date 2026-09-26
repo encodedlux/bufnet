@@ -3,6 +3,9 @@
 *.rbxl
 sourcemap.json
 .vscode/
+.pesde/
+luau_packages/
+lune_packages/
 docs/.vitepress/dist
 docs/.vitepress/cache
 docs/node_modules
