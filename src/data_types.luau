@@ -357,9 +357,7 @@ const function array<T>(value_type: DataType<T>)
 	end, size_fn)
 end
 
-const function struct<T>(schema: T)
-	schema = schema :: { read [string]: DataType<any> }
-
+const function struct<T>(schema: T & { read [string]: DataType<any> })
 	const keys: { string } = {}
 	const value_writes: { index<DataType<DataTypeSchema<T>>, "write"> } = {}
 	const value_reads: { index<DataType<DataTypeSchema<T>>, "read"> } = {}
@@ -487,13 +485,28 @@ const function set<K>(key_type: DataType<K>)
 	end)
 end
 
-const function enum(values: { string })
-	const value_map: { [string]: number } = {}
-	for i, v in values do
-		value_map[v] = i
+type function union_of_literals(ty: typeof(types.newfunction())): type
+	const returns = ty:returns()
+	const head = returns.head or {}
+	local union = nil
+	for i = 1, #head do
+		const value_ty = head[i]
+		union = if union then types.unionof(union, value_ty) else value_ty
+	end
+	if returns.tail then
+		union = if union then types.unionof(union, returns.tail) else returns.tail
+	end
+	return if union then union else types.singleton(nil)
+end
+
+const function literals<T...>(...: T...)
+	const values = table.pack(... :: any)
+	const value_map: { [any]: number } = {}
+	for i = 1, values.n do
+		value_map[values[i]] = i
 	end
 
-	return create_data_type<<string>>(@native function(buff, offset, value)
+	return create_data_type<<union_of_literals<() -> T...>>>(@native function(buff, offset, value)
 		writeu8(buff, offset, value_map[value])
 		return BYTE
 	end, @native function(buff, offset)
@@ -685,7 +698,7 @@ return {
 	struct = struct,
 	map = map,
 	set = set,
-	enum = enum,
+	literals = literals,
 	tagged = tagged,
 	tuple = tuple,
 }

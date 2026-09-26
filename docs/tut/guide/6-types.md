@@ -143,25 +143,29 @@ net_server.my_event.fire_all({
 })
 ```
 
-## Enums
+## Literals
 
-Enums define a value that can only be one of a predefined set of strings. This is useful for restricting a value to a fixed list of valid options.
+Literals define a value that can only be one of a predefined set of literal options (such as strings, numbers, booleans, or any other literal values). This is useful for restricting a value to a fixed list of valid options while taking only **1 byte** over the wire.
 
 ```luau
 -- net.luau
 return define("example", {
     my_event = event({
-        value = t.enum({ "foo", "bar" })
+        value = t.literals("foo" :: "foo", "bar" :: "bar")
     })
 })
 ```
 
-In this example, value can only be `"foo"` or `"bar"`:
+In this example, the value can only be `"foo"` or `"bar"`:
 ```luau
 -- server.luau
 net_server.my_event.fire_all("foo")
 net_server.my_event.fire_all("bar")
 ```
+
+::: tip
+`t.literals` supports strings, numbers, and booleans as varargs. Type casts (e.g. `"foo" :: "foo"` or `true :: true`) ensure Luau narrows the arguments to exact singleton literal types instead of widening them to general types like `string` or `boolean`.
+:::
 
 ## Tagged
 

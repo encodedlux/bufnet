@@ -120,7 +120,6 @@ const function lifecycle(namespace: string, auto_flush: boolean?)
 	const read_fns_unreliable = table.create<<(...any) -> (number, ...any)>>(256)
 	const dispatches_reliable = table.create<<(...any) -> ()>>(256)
 	const dispatches_unreliable = table.create<<(...any) -> ()>>(256)
-
 	const registered_names: { [string]: true } = {}
 
 	local players_reliable: { [Player]: BufferSave }
@@ -358,7 +357,7 @@ const function lifecycle(namespace: string, auto_flush: boolean?)
 		read_fns_reliable[id] = function(buff, offset, refs)
 			const invocation_id = readu8(buff, offset)
 			return handle_funct_return(invocation_id, read_args(buff, offset + 1, refs))
-		end :: any
+		end
 
 		const funct_listeners = {} :: { (...any) -> ...any }
 		const funct_queue = {} :: { any }
@@ -423,7 +422,7 @@ const function lifecycle(namespace: string, auto_flush: boolean?)
 				return 2, false, invocation_id
 			end
 			return handle_funct_return(invocation_id, success, read_args(buff, offset + 2, refs))
-		end :: any
+		end
 
 		dispatches_reliable[id] = function(success, invocation_id, ...)
 			const thread = calls[invocation_id]

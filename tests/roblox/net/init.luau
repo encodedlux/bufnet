@@ -19,7 +19,7 @@ return define("test", {
 	scope = {
 		my_func = funct({
 			value = t.tuple(t.string, t.boolean),
-			ret = t.string,
+			ret = t.literals("foo" :: "foo", "bar" :: "bar"),
 		}),
 	},
 	my_state = state({
