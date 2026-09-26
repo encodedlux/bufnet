@@ -102,6 +102,23 @@ const function create_data_type<T>(
 	}
 end
 
+const function refine<T>(value_type: DataType<T>, refine_fn: (value: T) -> (boolean, string?))
+	const value_write = value_type.write
+	const value_read = value_type.read
+	const value_size = value_type.size
+
+	return create_data_type<<T>>(value_write, @native function(buff, offset, refs)
+		const size, value = value_read(buff, offset, refs)
+		local success, reason = refine_fn(value)
+		if not success then
+			error(
+				`[{ROOT_SCOPE_NAME}]: Failed to validate value '{tostring(value)}'{if reason then `: {reason}` else ""}`
+			)
+		end
+		return size, value
+	end, value_size)
+end
+
 const u8 = create_data_type<<number>>(@native function(buff, offset, value)
 	writeu8(buff, offset, value)
 	return BYTE
@@ -667,6 +684,7 @@ end
 
 return {
 	create = create_data_type,
+	refine = refine,
 
 	null_ref = null_ref,
 
