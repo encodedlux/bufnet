@@ -6,7 +6,7 @@ const lifecycle = require("../core/lifecycle")
 const types = require("../types")
 
 type DefOptions = types.DefOptions
-type Def<Objects, Options> = types.Def<Objects, Options>
+type Define<Objects, Options> = types.Define<Objects, Options>
 type ServerObjects<Objects, Options> = types.ServerObjects<Objects, Options>
 type ClientObjects<Objects, Options> = types.ClientObjects<Objects, Options>
 
@@ -23,7 +23,7 @@ const function define<Objects, Options>(
 	name: string,
 	objects: Objects & DefObjects,
 	options: (Options & DefOptions)?
-): Def<Objects, Options>
+): Define<Objects, Options>
 	if names_cache[name] then
 		error(`[{ROOT_SCOPE_NAME}]: "{name}" has already been defined.`)
 	end

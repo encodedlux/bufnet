@@ -3,8 +3,9 @@ export type Case = "Pascal" | "Camel" | "Snake"
 
 export type function get_casing(case: type?)
 	const casing = types.newtable()
+	const is_valid = case and case:is("singleton")
 	for k, options in Cases:properties() do
-		if case and (case:is("string") or case:is("Singleton")) then
+		if is_valid and options.read:readproperty(case) then
 			casing:setproperty(k, options.read:readproperty(case))
 		else
 			casing:setproperty(k, options.read:readproperty(DefaultCase))
@@ -24,6 +25,8 @@ const function build_case<P, C, S>(pascal: P, camel: C, snake: S): { Pascal: P, 
 end
 
 const cases = {
+	server = build_case("Server" :: "Server", "server" :: "server", "server" :: "server"),
+	client = build_case("Client" :: "Client", "client" :: "client", "client" :: "client"),
 	flush = build_case("Flush" :: "Flush", "flush" :: "flush", "flush" :: "flush"),
 	fire = build_case("Fire" :: "Fire", "fire" :: "fire", "fire" :: "fire"),
 	fire_all = build_case("FireAll" :: "FireAll", "fireAll" :: "fireAll", "fire_all" :: "fire_all"),

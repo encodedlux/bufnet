@@ -138,7 +138,7 @@ type function build_listen(is_server: boolean, tbl: typeof(types.newtable()), re
 	end
 	const cb_fn = types.newfunction({ head = cb_head, tail = returns.tail })
 	-- disconnect: () -> ()
-	const disconnect_fn = types.newfunction({ head = {} }, { head = {} })
+	const disconnect_fn = types.newfunction()
 	-- on: (callback) -> disconnect
 	const on_fn = types.newfunction({ head = { cb_fn } }, { head = { disconnect_fn } })
 	tbl:setproperty(types.singleton("on"), on_fn)
@@ -150,9 +150,9 @@ type function build_iter(is_server: boolean, tbl: typeof(types.newtable()), retu
 	-- next: () -> (number, Player, T...) | (number, T...)
 	const iter_ret_head = if is_server then { types.number, GetPlayerType() } else { types.number }
 	table.move(head, 1, #head, #iter_ret_head + 1, iter_ret_head)
-	const next_fn = types.newfunction({ head = {} }, { head = iter_ret_head, tail = returns.tail })
+	const next_fn = types.newfunction({}, { head = iter_ret_head, tail = returns.tail })
 	-- iter: () -> next
-	const iter_fn = types.newfunction({ head = {} }, { head = { next_fn } })
+	const iter_fn = types.newfunction({}, { head = { next_fn } })
 	tbl:setproperty(types.singleton("iter"), iter_fn)
 	return tbl
 end
@@ -284,11 +284,12 @@ export type State<T = unknown> = {
 	client: (options: DefOptions, path: string, lifecycle: any) -> StateClient<T>,
 }
 
-type function resolve_objects(objects: type, options: type, is_server: boolean)
+type function resolve_objects(objects: type, options: type, from: type)
 	assert(objects:is("table"), "Expected a table")
 
 	const casing = options:is("table") and options:readproperty(types.singleton("casing"))
 	const auto_flush = options:is("table") and options:readproperty(types.singleton("auto_flush"))
+	const is_server = (from == types.singleton("Server"))
 
 	const method_names = get_casing(casing)
 
@@ -338,15 +339,10 @@ type function resolve_objects(objects: type, options: type, is_server: boolean)
 	return returns
 end
 
-export type function ServerObjects(objects: type, options: type)
-	return resolve_objects(objects, options, true)
-end
+export type ServerObjects<Objects, Options> = resolve_objects<Objects, Options, "Server">
+export type ClientObjects<Objects, Options> = resolve_objects<Objects, Options, "Client">
 
-export type function ClientObjects(objects: type, options: type)
-	return resolve_objects(objects, options, false)
-end
-
-export type Def<Objects, Options> = {
+export type Define<Objects, Options> = {
 	server: () -> ServerObjects<Objects, Options>,
 	client: () -> ClientObjects<Objects, Options>,
 }
