@@ -1,11 +1,12 @@
 --!optimize 2
+--!nolint LocalShadow
 
 const Players = game:GetService("Players")
 
 const constants = require("./constants")
 const t = require("./types")
 
-type DataType<T> = t.DataType<T>
+type DataType<T = any> = t.DataType<T>
 type DataTypeValue<T> = t.DataTypeValue<T>
 type DataTypeSchema<T> = t.DataTypeSchema<T>
 
@@ -102,21 +103,26 @@ const function create_data_type<T>(
 	}
 end
 
-const function refine<T>(value_type: DataType<T>, refine_fn: (value: T) -> (boolean, string?))
+const function refine<T>(value_type: T)
+	const value_type = value_type :: DataType
 	const value_write = value_type.write
 	const value_read = value_type.read
 	const value_size = value_type.size
 
-	return create_data_type<<T>>(value_write, @native function(buff, offset, refs)
-		const size, value = value_read(buff, offset, refs)
-		local success, reason = refine_fn(value)
-		if not success then
-			error(
-				`[{ROOT_SCOPE_NAME}]: Failed to validate value '{tostring(value)}'{if reason then `: {reason}` else ""}`
-			)
-		end
-		return size, value
-	end, value_size)
+	return function(refine_fn: (value: DataTypeValue<T>) -> (boolean, string?))
+		return create_data_type<<T>>(value_write, @native function(buff, offset, refs)
+			const size, value = value_read(buff, offset, refs)
+			local success, reason = refine_fn(value)
+			if not success then
+				error(
+					`[{ROOT_SCOPE_NAME}]: Failed to validate value '{tostring(value)}'{if reason
+						then `: {reason}`
+						else ""}`
+				)
+			end
+			return size, value
+		end, value_size)
+	end
 end
 
 const u8 = create_data_type<<number>>(@native function(buff, offset, value)
@@ -302,7 +308,9 @@ end, @native function(buff, offset)
 	return 0, nil
 end, 0)
 
-const function optional<T>(value_type: DataType<T>)
+const function optional<T>(value_type: T)
+	const value_type = value_type :: DataType
+
 	const value_write = value_type.write
 	const value_read = value_type.read
 	const value_size = value_type.size
@@ -315,7 +323,7 @@ const function optional<T>(value_type: DataType<T>)
 			return if value == nil then BYTE else BYTE + value_size(value)
 		end
 
-	return create_data_type<<T?>>(@native function(buff, offset, value, refs)
+	return create_data_type<<DataTypeValue<T>?>>(@native function(buff, offset, value, refs)
 		if value == nil then
 			writeu8(buff, offset, 0)
 			return BYTE
@@ -333,7 +341,9 @@ const function optional<T>(value_type: DataType<T>)
 	end, size_fn)
 end
 
-const function array<T>(value_type: DataType<T>)
+const function array<T>(value_type: T)
+	const value_type = value_type :: DataType
+
 	const value_write = value_type.write
 	const value_read = value_type.read
 	const value_size = value_type.size
@@ -350,7 +360,7 @@ const function array<T>(value_type: DataType<T>)
 			return total
 		end
 
-	return create_data_type<<{ T }>>(@native function(buff, offset, value, refs)
+	return create_data_type<<{ DataTypeValue<T> }>>(@native function(buff, offset, value, refs)
 		writeu16(buff, offset, #value)
 		local current_offset = offset + SHORT
 		for i = 1, #value do
@@ -364,7 +374,7 @@ const function array<T>(value_type: DataType<T>)
 			`[{ROOT_SCOPE_NAME}]:Expected "array_length" to be smaller than 2000, got {array_length} instead.`
 		)
 		local current_offset = offset + SHORT
-		const array = table.create(array_length)
+		const array: { any } = table.create(array_length)
 		for i = 1, array_length do
 			const length, value = value_read(buff, current_offset, refs)
 			current_offset += length
@@ -374,7 +384,9 @@ const function array<T>(value_type: DataType<T>)
 	end, size_fn)
 end
 
-const function struct<T>(schema: T & { read [string]: DataType<any> })
+const function struct<T>(schema: T)
+	const schema = schema :: { read [string]: DataType }
+
 	const keys: { string } = {}
 	const value_writes: { index<DataType<DataTypeSchema<T>>, "write"> } = {}
 	const value_reads: { index<DataType<DataTypeSchema<T>>, "read"> } = {}
@@ -430,7 +442,10 @@ const function struct<T>(schema: T & { read [string]: DataType<any> })
 	end, size)
 end
 
-const function map<K, V>(key_type: DataType<K>, value_type: DataType<V>)
+const function map<K, V>(key_type: K, value_type: V)
+	const key_type = key_type :: DataType
+	const value_type = value_type :: DataType
+
 	const key_write = key_type.write
 	const key_read = key_type.read
 	const key_size = key_type.size
@@ -438,7 +453,7 @@ const function map<K, V>(key_type: DataType<K>, value_type: DataType<V>)
 	const value_read = value_type.read
 	const value_size = value_type.size
 
-	return create_data_type<<{ [K]: V }>>(@native function(buff, offset, value, refs)
+	return create_data_type<<{ [DataTypeValue<K>]: DataTypeValue<V> }>>(@native function(buff, offset, value, refs)
 		local current_offset = offset + SHORT
 		local map_length = 0
 		for k, v in value do
@@ -469,12 +484,14 @@ const function map<K, V>(key_type: DataType<K>, value_type: DataType<V>)
 	end)
 end
 
-const function set<K>(key_type: DataType<K>)
+const function set<K>(key_type: K)
+	const key_type = key_type :: DataType
+
 	const key_write = key_type.write
 	const key_read = key_type.read
 	const key_size = key_type.size
 
-	return create_data_type<<{ [K]: boolean }>>(@native function(buff, offset, value, refs)
+	return create_data_type<<{ [DataTypeValue<K>]: true }>>(@native function(buff, offset, value, refs)
 		local current_offset = offset + SHORT
 		local set_length = 0
 		for k in value do
@@ -490,7 +507,7 @@ const function set<K>(key_type: DataType<K>)
 		for _ = 1, set_length do
 			const key_length, key = key_read(buff, current_offset, refs)
 			current_offset += key_length
-			result[key] = true
+			result[key] = true :: true
 		end
 		return current_offset - offset, result
 	end, @native function(value)
@@ -517,7 +534,7 @@ type function union_of_literals(ty: typeof(types.newfunction())): type
 end
 
 const function literals<T...>(...: T...)
-	const values = table.pack(... :: any)
+	const values = table.pack(...)
 	const value_map: { [any]: number } = {}
 	for i = 1, values.n do
 		value_map[values[i]] = i
@@ -527,7 +544,7 @@ const function literals<T...>(...: T...)
 		writeu8(buff, offset, value_map[value])
 		return BYTE
 	end, @native function(buff, offset)
-		return BYTE, values[readu8(buff, offset)]
+		return BYTE, values[readu8(buff, offset)] :: any
 	end, BYTE)
 end
 
@@ -543,143 +560,64 @@ type function union_of_fields(ty: type)
 	local union = nil
 	for tag, v in ty:properties() do
 		const fields = v.read
-		assert(fields and fields:is("table"), "requires a table value")
+		if not fields then
+			continue
+		end
+		assert(fields:is("table"), "requires a table value")
 		const tagged_fields = TaggedType(tag, DataTypeSchema(fields))
 		union = if union then types.unionof(union, tagged_fields) else tagged_fields
 	end
 	return if union then union else types.singleton(nil)
 end
 
-const function tagged<T>(definition: T & { read [string]: { read [string]: DataType<any> } })
-	const struct_values: { [string]: DataType<any> } = {}
+const function tagged<T>(definition: T)
+	const definition = definition :: { read [string]: { read [string]: DataType } }
+
+	const struct_map: { [string]: DataType } = {}
 	const tags: { string } = {}
-	for tag, variant_def in definition :: any do
+
+	for tag, variant_def in definition do
 		table.insert(tags, tag)
-		if type(variant_def) == "table" and not variant_def.write then
-			struct_values[tag] = (struct :: any)(variant_def)
-		end
+		struct_map[tag] = struct(variant_def)
 	end
 	table.sort(tags)
+
+	const length = #tags
+
+	const struct_writes = table.create<<index<DataType, "write">>>(length)
+	const struct_reads = table.create<<index<DataType, "read">>>(length)
+	const struct_sizes = table.create<<index<DataType, "size">>>(length)
 
 	const tag_to_index = {}
 	for i, tag in tags do
 		tag_to_index[tag] = i
+		const struct = struct_map[tag]
+		struct_writes[i] = struct.write
+		struct_reads[i] = struct.read
+		struct_sizes[i] = struct.size
 	end
 
 	return create_data_type<<union_of_fields<T>>>(@native function(buff, offset, value: TaggedType, refs)
-		const tag = value.type
-		const tag_index = tag_to_index[tag]
+		const tag_index = tag_to_index[value.type]
 		writeu8(buff, offset, tag_index)
-		const length = struct_values[tag].write(buff, offset + 1, value, refs)
-		return length + 1
+		const length = struct_writes[tag_index](buff, offset + 1, value, refs)
+		return BYTE + length
 	end, @native function(buff, offset, refs)
 		const tag_index = readu8(buff, offset)
-		const tag = tags[tag_index]
-		const length, struct_val = struct_values[tag].read(buff, offset + 1, refs)
-		struct_val.type = tag
-		return length + 1, struct_val
+		const length, struct_val = struct_reads[tag_index](buff, offset + 1, refs)
+		struct_val.type = tags[tag_index]
+		return BYTE + length, struct_val
 	end, @native function(value: TaggedType)
-		return BYTE + measure(struct_values[value.type].size, value)
+		const tag_index = tag_to_index[value.type]
+		return BYTE + measure(struct_sizes[tag_index], value)
 	end)
 end
 
-type TupleFn =
-	(<A>(DataType<A>) -> () -> DataType<A>)
-	& (<A, B>(DataType<A>, DataType<B>) -> () -> (DataType<A>, DataType<B>))
-	& (<A, B, C>(DataType<A>, DataType<B>, DataType<C>) -> () -> (DataType<A>, DataType<B>, DataType<C>))
-	& (<A, B, C, D>(
-		DataType<A>,
-		DataType<B>,
-		DataType<C>,
-		DataType<D>
-	) -> () -> (DataType<A>, DataType<B>, DataType<C>, DataType<D>))
-	& (<A, B, C, D, E>(
-		DataType<A>,
-		DataType<B>,
-		DataType<C>,
-		DataType<D>,
-		DataType<E>
-	) -> () -> (DataType<A>, DataType<B>, DataType<C>, DataType<D>, DataType<E>))
-	& (<A, B, C, D, E, F>(
-		DataType<A>,
-		DataType<B>,
-		DataType<C>,
-		DataType<D>,
-		DataType<E>,
-		DataType<F>
-	) -> () -> (DataType<A>, DataType<B>, DataType<C>, DataType<D>, DataType<E>, DataType<F>))
-	& (<A, B, C, D, E, F, G>(
-		DataType<A>,
-		DataType<B>,
-		DataType<C>,
-		DataType<D>,
-		DataType<E>,
-		DataType<F>,
-		DataType<G>
-	) -> () -> (DataType<A>, DataType<B>, DataType<C>, DataType<D>, DataType<E>, DataType<F>, DataType<G>))
-	& (<A, B, C, D, E, F, G, H>(
-		DataType<A>,
-		DataType<B>,
-		DataType<C>,
-		DataType<D>,
-		DataType<E>,
-		DataType<F>,
-		DataType<G>,
-		DataType<H>
-	) -> () -> (DataType<A>, DataType<B>, DataType<C>, DataType<D>, DataType<E>, DataType<F>, DataType<G>, DataType<H>))
-	& (<A, B, C, D, E, F, G, H, I>(
-		DataType<A>,
-		DataType<B>,
-		DataType<C>,
-		DataType<D>,
-		DataType<E>,
-		DataType<F>,
-		DataType<G>,
-		DataType<H>,
-		DataType<I>
-	) -> (
-	) -> (
-		DataType<A>,
-		DataType<B>,
-		DataType<C>,
-		DataType<D>,
-		DataType<E>,
-		DataType<F>,
-		DataType<G>,
-		DataType<H>,
-		DataType<I>
-	))
-	& (<A, B, C, D, E, F, G, H, I, J>(
-		DataType<A>,
-		DataType<B>,
-		DataType<C>,
-		DataType<D>,
-		DataType<E>,
-		DataType<F>,
-		DataType<G>,
-		DataType<H>,
-		DataType<I>,
-		DataType<J>
-	) -> (
-	) -> (
-		DataType<A>,
-		DataType<B>,
-		DataType<C>,
-		DataType<D>,
-		DataType<E>,
-		DataType<F>,
-		DataType<G>,
-		DataType<H>,
-		DataType<I>,
-		DataType<J>
-	))
-	& ((...DataType<any>) -> () -> ...DataType<any>)
-
-const tuple: TupleFn = function(...)
+const function tuple<T...>(...: T...): () -> T...
 	const args = { ... }
 	return @native function()
 		return table.unpack(args)
-	end
+	end :: any
 end
 
 return {

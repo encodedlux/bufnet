@@ -270,28 +270,28 @@ const weapon = t.create<<WeaponData>>(function(buff, offset, value, refs)
     buffer.writeu16(buff, offset, value.level)
 
     const len = string.len(value.name)
-	buffer.writeu16(buff, offset + 2, len)
-	buffer.writestring(buff, offset + 4, value.name)
+	buffer.writeu8(buff, offset + 2, len)
+	buffer.writestring(buff, offset + 3, value.name)
 
     table.insert(refs, value.model or t.null_ref)
 
-    return 4 + len
+    return 3 + len
 end, function(buff, offset, refs)
     const level = buffer.readu16(buff, offset)
-    const len = buffer.readu16(buff, offset + 2)
-    const name = buffer.readstring(buff, offset + 4, len)
+    const len = buffer.readu8(buff, offset + 2)
+    const name = buffer.readstring(buff, offset + 3, len)
 
     refs.cursor += 1
     const model: Model = refs[refs.cursor]
     assert(model:IsA("Model"), "Expected a Model, got " .. model.ClassName)
 
-    return 4 + len, {
+    return 3 + len, {
         level = level,
         name = name,
         model = model,
     }
 end, function(value)
-    return 4 + string.len(value.name)
+    return 3 + string.len(value.name)
 end)
 ```
 
@@ -349,3 +349,32 @@ end
 ```
 
 `refs` is independent from the buffer offset. `offset` tracks binary data inside the buffer, while `refs.cursor` tracks external references.
+
+## Refine
+
+`t.refine(value_type)(refine_fn)`
+
+Refine wraps an existing datatype and validates every value that is deserialized.
+
+```luau
+-- net.luau
+return define("example", {
+    my_event = event({
+        value = t.refine(t.u8)(function(value)
+            return value <= 100, "value must be at most 100"
+        end)
+    })
+})
+```
+```luau
+-- server.luau
+net_server.my_event.fire_all(50) -- pass
+net_server.my_event.fire_all(200) -- fails
+```
+
+- `value_type` is any datatype, including other special types such as `t.struct`, `t.array` or `t.map`.
+- `refine_fn` receives the deserialized value and returns a `boolean`. The second return is optional and is appended to the error message as the reason for the failure.
+
+::: warning
+Validation happens on the receiving side, while the value is being read. It does not prevent invalid values from being written, it only guarantees that they are never delivered to your listeners.
+:::

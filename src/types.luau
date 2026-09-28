@@ -17,8 +17,10 @@ export type DataTypeValue<T> = index<T, "__T">
 export type function DataTypeSchema(schema: type)
 	assert(schema:is("table"), "expected a table")
 	local result = types.newtable()
-	for key, property in schema:properties() do
-		result:setproperty(key, DataTypeValue(property.read))
+	for key, value in schema:properties() do
+		if value.read then
+			result:setproperty(key, DataTypeValue(value.read))
+		end
 	end
 	return result
 end
@@ -315,7 +317,9 @@ type function resolve_objects(objects: type, options: type, from: type)
 			if ret then
 				const new_ret = types.newtable()
 				for k, prop in ret:properties() do
-					new_ret:setproperty(method_names:readproperty(k), prop.read or prop.write)
+					if prop.read then
+						new_ret:setproperty(method_names:readproperty(k), prop.read)
+					end
 				end
 				return new_ret
 			end

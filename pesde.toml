@@ -1,5 +1,5 @@
 name = "encodedlux/bufnet"
-version = "0.1.2"
+version = "0.1.3"
 description = "Lightweight networking library for Roblox built for performance, type safety and efficient data communication."
 authors = ["encodedlux"]
 repository = "https://github.com/encodedlux/bufnet"
