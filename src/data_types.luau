@@ -110,7 +110,7 @@ const function refine<T>(value_type: T)
 	const value_size = value_type.size
 
 	return function(refine_fn: (value: DataTypeValue<T>) -> (boolean, string?))
-		return create_data_type<<T>>(value_write, @native function(buff, offset, refs)
+		return create_data_type<<DataTypeValue<T>>>(value_write, @native function(buff, offset, refs)
 			const size, value = value_read(buff, offset, refs)
 			local success, reason = refine_fn(value)
 			if not success then
