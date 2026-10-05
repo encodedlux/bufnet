@@ -72,10 +72,17 @@ const function define<Objects, Options>(
 		return resolve_objects()
 	end
 
-	return {
-		server = def_server,
-		client = def_client,
-	}
+	return setmetatable({}, {
+		__index = function(_, key): ServerObjects<Objects, Options> | ClientObjects<Objects, Options>
+			if key == "server" then
+				return def_server()
+			end
+			if key == "client" then
+				return def_client()
+			end
+			error(`[{ROOT_SCOPE_NAME}]: Key "{key}" not found in "{name}".`)
+		end,
+	}) :: any
 end
 
 return define

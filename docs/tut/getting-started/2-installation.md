@@ -7,7 +7,7 @@ BufNet can be installed through [Wally](https://wally.run/) or [Pesde](https://p
 :::tabs
 ==wally.toml
 ```toml
-bufnet = "encodedlux/bufnet@0.1.4"
+bufnet = "encodedlux/bufnet@0.1.5"
 ```
 :::
 
@@ -16,7 +16,7 @@ bufnet = "encodedlux/bufnet@0.1.4"
 :::tabs
 ==pesde.toml
 ```toml
-bufnet = { name = "encodedlux/bufnet", version = "^0.1.4" }
+bufnet = { name = "encodedlux/bufnet", version = "^0.1.5" }
 ```
 
 ==pesde-cli

@@ -4,13 +4,11 @@ export type Case = casing.Case
 export type get_casing<T> = casing.get_casing<T>
 
 export type DataType<T = unknown> = {
-	__T: T,
-	write: (buff: buffer, offset: number, value: T, refs: { [any]: any }) -> number,
-	read: (buff: buffer, offset: number, refs: { [any]: any }) -> (number, T),
-	size: number | (value: T) -> number,
+	read __T: T,
+	read write: (buff: buffer, offset: number, value: T, refs: { [any]: any }) -> number,
+	read read: (buff: buffer, offset: number, refs: { [any]: any }) -> (number, T),
+	read size: number | (value: T) -> number,
 }
-
-export type AnyDataType = DataType<any> | (() -> ...DataType<any>) | any
 
 export type DataTypeValue<T> = index<T, "__T">
 
@@ -37,30 +35,23 @@ export type function SelectTupleValue(i: type, ty: type)
 	return DataTypeValue(arg_ty)
 end
 
-type function data_type_input(ty: type): type
-	const function get_input(value_ty: type)
-		if value_ty:is("table") then
-			return types.newfunction({}, { head = { DataTypeValue(value_ty) } })
-		end
-		assert(value_ty:is("function"), "expected a function")
-		const returns = value_ty:returns()
-		const head = returns.head or {}
-		const new_head = {}
-		for i, value in head do
-			new_head[i] = DataTypeValue(value)
-		end
-		return types.newfunction({}, { head = new_head, tail = returns.tail })
+type function data_type_input(ty: type)
+	if not ty then
+		return types.newfunction()
 	end
-
-	if ty:is("union") then
-		const components = ty:components()
-		for idx = 1, #components do
-			const comp = components[idx]
-			return get_input(comp)
-		end
+	if ty:is("table") then
+		return types.newfunction({ head = { DataTypeValue(ty) } })
 	end
-
-	return get_input(ty)
+	if not ty:is("function") then
+		return types.newfunction()
+	end
+	const returns = ty:returns()
+	const head = returns.head or {}
+	const new_head = {}
+	for i, value in head do
+		new_head[i] = DataTypeValue(value)
+	end
+	return types.newfunction({ head = new_head, tail = returns.tail })
 end
 
 export type BufferSave = {
@@ -76,17 +67,17 @@ export type EventProps = {
 	read from: ("Server" | "Client")?,
 	read type: ("Reliable" | "Unreliable")?,
 	read call: EventCall?,
-	read value: AnyDataType,
+	read value: any,
 }
 
 export type FunctProps = {
-	read value: AnyDataType,
-	read ret: AnyDataType,
+	read value: any,
+	read ret: any,
 }
 
-export type StateProps<T = unknown> = {
-	read value: DataType<T>,
-	read initial: T,
+export type StateProps<T> = {
+	read value: T,
+	read initial: DataTypeValue<T>,
 }
 
 export type DefOptions = {
@@ -95,40 +86,42 @@ export type DefOptions = {
 	read auto_flush: (true | false)?,
 }
 
-type GetPlayerType<T = "Player"> = index<{
-	Player: Player,
-	List: { Player },
+type GetPlayerType<T = "player"> = index<{
+	player: Player,
+	list: { Player },
 }, T>
 
-type function build_fire(is_server: boolean, tbl: typeof(types.newtable()), returns)
-	const head: { any } = returns.head or {}
+type function build_fire(is_server: boolean, tbl: typeof(types.newtable()), value_fn: type)
+	const value = value_fn:parameters()
+	const head: { any } = value.head or {}
 	if is_server then
 		-- fire: (player: Player, T...) -> ()
 		const fire_head = { GetPlayerType() :: any }
 		table.move(head, 1, #head, #fire_head + 1, fire_head)
-		const fire_fn = types.newfunction({ head = fire_head, tail = returns.tail })
+		const fire_fn = types.newfunction({ head = fire_head, tail = value.tail })
 		-- fire_all: (T...) -> ()
-		const fire_all_fn = types.newfunction({ head = head, tail = returns.tail })
+		const fire_all_fn = types.newfunction({ head = head, tail = value.tail })
 		-- fire_list: (players: { Player }, T...) -> ()
-		const list_head = { GetPlayerType(types.singleton("List")) :: any }
+		const list_head = { GetPlayerType(types.singleton("list")) :: any }
 		table.move(head, 1, #head, #list_head + 1, list_head)
-		const fire_list_fn = types.newfunction({ head = list_head, tail = returns.tail })
+		const fire_list_fn = types.newfunction({ head = list_head, tail = value.tail })
 		-- fire_except: (player: Player, T...) -> ()
-		const fire_except_fn = types.newfunction({ head = fire_head, tail = returns.tail })
+		const fire_except_fn = types.newfunction({ head = fire_head, tail = value.tail })
 		tbl:setproperty(types.singleton("fire"), fire_fn)
 		tbl:setproperty(types.singleton("fire_all"), fire_all_fn)
 		tbl:setproperty(types.singleton("fire_list"), fire_list_fn)
 		tbl:setproperty(types.singleton("fire_except"), fire_except_fn)
 	else
 		-- fire: (T...) -> ()
-		const fire_fn = types.newfunction({ head = returns.head, tail = returns.tail })
+		const fire_fn = types.newfunction({ head = value.head, tail = value.tail })
 		tbl:setproperty(types.singleton("fire"), fire_fn)
 	end
 	return tbl
 end
 
-type function build_listen(is_server: boolean, tbl: typeof(types.newtable()), returns)
-	const head: { any } = returns.head or {}
+type function build_listen(is_server: boolean, tbl: typeof(types.newtable()), value_fb: type)
+	const value = value_fb:parameters()
+	const head: { any } = value.head or {}
 	local cb_head
 	if is_server then
 		-- callback: (player: Player, T...) -> ()
@@ -138,7 +131,7 @@ type function build_listen(is_server: boolean, tbl: typeof(types.newtable()), re
 		-- callback: (T...) -> ()
 		cb_head = head
 	end
-	const cb_fn = types.newfunction({ head = cb_head, tail = returns.tail })
+	const cb_fn = types.newfunction({ head = cb_head, tail = value.tail })
 	-- disconnect: () -> ()
 	const disconnect_fn = types.newfunction()
 	-- on: (callback) -> disconnect
@@ -147,12 +140,13 @@ type function build_listen(is_server: boolean, tbl: typeof(types.newtable()), re
 	return tbl
 end
 
-type function build_iter(is_server: boolean, tbl: typeof(types.newtable()), returns)
-	const head = returns.head or {}
+type function build_iter(is_server: boolean, tbl: typeof(types.newtable()), value_fn: type)
+	const value = value_fn:parameters()
+	const head = value.head or {}
 	-- next: () -> (number, Player, T...) | (number, T...)
 	const iter_ret_head = if is_server then { types.number, GetPlayerType() } else { types.number }
 	table.move(head, 1, #head, #iter_ret_head + 1, iter_ret_head)
-	const next_fn = types.newfunction({}, { head = iter_ret_head, tail = returns.tail })
+	const next_fn = types.newfunction({}, { head = iter_ret_head, tail = value.tail })
 	-- iter: () -> next
 	const iter_fn = types.newfunction({}, { head = { next_fn } })
 	tbl:setproperty(types.singleton("iter"), iter_fn)
@@ -161,22 +155,20 @@ end
 
 export type function EventServer(props: type, options: type)
 	const from = props:readproperty(types.singleton("from"))
-	const value = props:readproperty(types.singleton("value"))
+	const value = props:readproperty(types.singleton("value")) or types.singleton(nil)
 	const call = props:readproperty(types.singleton("call"))
 	const default_call = options:is("table") and options:readproperty(types.singleton("default_call"))
 	const use_polling = (call == types.singleton("Polling")) or (default_call == types.singleton("Polling"))
-
-	const input_value = data_type_input(value):returns()
-
+	const value_fn = data_type_input(value)
 	const tbl = types.newtable()
 	if from ~= types.singleton("Client") then
-		build_fire(true, tbl, input_value)
+		build_fire(true, tbl, value_fn)
 	end
 	if from ~= types.singleton("Server") then
 		if use_polling then
-			build_iter(true, tbl, input_value)
+			build_iter(true, tbl, value_fn)
 		else
-			build_listen(true, tbl, input_value)
+			build_listen(true, tbl, value_fn)
 		end
 	end
 	return tbl
@@ -184,22 +176,20 @@ end
 
 export type function EventClient(props: type, options: type)
 	const from = props:readproperty(types.singleton("from"))
-	const value = props:readproperty(types.singleton("value"))
+	const value = props:readproperty(types.singleton("value")) or types.singleton(nil)
 	const call = props:readproperty(types.singleton("call"))
 	const default_call = options:is("table") and options:readproperty(types.singleton("default_call"))
 	const use_polling = (call == types.singleton("Polling")) or (default_call == types.singleton("Polling"))
-
-	const input_value = data_type_input(value):returns()
-
+	const value_fn = data_type_input(value)
 	const tbl = types.newtable()
 	if from ~= types.singleton("Server") then
-		build_fire(false, tbl, input_value)
+		build_fire(false, tbl, value_fn)
 	end
 	if from ~= types.singleton("Client") then
 		if use_polling then
-			build_iter(false, tbl, input_value)
+			build_iter(false, tbl, value_fn)
 		else
-			build_listen(false, tbl, input_value)
+			build_listen(false, tbl, value_fn)
 		end
 	end
 	return tbl
@@ -212,20 +202,14 @@ export type Event<Props = EventProps, Options = DefOptions> = {
 	client: (options: Options & DefOptions, path: string, lifecycle: any) -> EventClient<Props, Options>,
 }
 
-export type function FunctServer(props: type)
-	const value = props:readproperty(types.singleton("value"))
-	const ret = props:readproperty(types.singleton("ret"))
-
-	const input_value = data_type_input(value):returns()
-	const input_ret = data_type_input(ret):returns()
-
+type function build_funct_on(value_fn: type, ret_fn: type)
+	const value = value_fn:parameters()
+	const ret = ret_fn:parameters()
 	-- callback: (player, T...) -> R...
 	const cb_head: { any } = { GetPlayerType() }
-	table.move(input_value.head, 1, #input_value.head, #cb_head + 1, cb_head)
-	const cb_fn = types.newfunction(
-		{ head = cb_head, tail = input_value.tail },
-		{ head = input_ret.head, tail = input_ret.tail }
-	)
+	const in_head = value.head or {}
+	table.move(in_head, 1, #in_head, #cb_head + 1, cb_head)
+	const cb_fn = types.newfunction({ head = cb_head, tail = value.tail }, { head = ret.head, tail = ret.tail })
 	-- on: (callback) -> ()
 	const on_fn = types.newfunction({ head = { cb_fn } })
 	const tbl = types.newtable()
@@ -233,21 +217,30 @@ export type function FunctServer(props: type)
 	return tbl
 end
 
-export type function FunctClient(props: type)
-	const value = props:readproperty(types.singleton("value"))
-	const ret = props:readproperty(types.singleton("ret"))
-
-	const input_value = data_type_input(value):returns()
-	const input_ret = data_type_input(ret):returns()
-
+type function build_funct_invoke(value_fn: type, ret_fn: type)
+	const value = value_fn:parameters()
+	const ret = ret_fn:parameters()
 	-- invoke: (T...) -> R...
-	const invoke_fn = types.newfunction(
-		{ head = input_value.head, tail = input_value.tail },
-		{ head = input_ret.head, tail = input_ret.tail }
-	)
+	const invoke_fn = types.newfunction({ head = value.head, tail = value.tail }, { head = ret.head, tail = ret.tail })
 	const tbl = types.newtable()
 	tbl:setproperty(types.singleton("invoke"), invoke_fn)
 	return tbl
+end
+
+export type function FunctServer(props: type)
+	const value = props:readproperty(types.singleton("value")) or types.singleton(nil)
+	const ret = props:readproperty(types.singleton("ret")) or types.singleton(nil)
+	const value_fn = data_type_input(value)
+	const ret_fn = data_type_input(ret)
+	return build_funct_on(value_fn, ret_fn)
+end
+
+export type function FunctClient(props: type)
+	const value = props:readproperty(types.singleton("value")) or types.singleton(nil)
+	const ret = props:readproperty(types.singleton("ret")) or types.singleton(nil)
+	const value_fn = data_type_input(value)
+	const ret_fn = data_type_input(ret)
+	return build_funct_invoke(value_fn, ret_fn)
 end
 
 export type Funct<Props = FunctProps> = {
@@ -286,20 +279,27 @@ export type State<T = unknown> = {
 	client: (options: DefOptions, path: string, lifecycle: any) -> StateClient<T>,
 }
 
+type function format_interface_casing(tbl: type, method_names: type)
+	const returns = types.newtable()
+	for k, prop in tbl:properties() do
+		const format_key = method_names:readproperty(k) :: type
+		if prop.read then
+			returns:setproperty(format_key, prop.read)
+		end
+	end
+	return returns
+end
+
 type function resolve_objects(objects: type, options: type, from: type)
 	assert(objects:is("table"), "Expected a table")
-
-	const casing = options:is("table") and options:readproperty(types.singleton("casing"))
+	const casing = options:is("table") and options:readproperty(types.singleton("casing")) or types.unknown
 	const auto_flush = options:is("table") and options:readproperty(types.singleton("auto_flush"))
 	const is_server = (from == types.singleton("Server"))
-
 	const method_names = get_casing(casing)
-
 	const function resolve_objects_recursive(t: type): type
 		if t:is("table") then
 			const kind = t:readproperty(types.singleton("type"))
-			local ret: type
-
+			local ret: type?
 			if kind == types.singleton("event") then
 				const props = t:readproperty(types.singleton("props"))
 				const build_event = is_server and EventServer or EventClient
@@ -313,17 +313,9 @@ type function resolve_objects(objects: type, options: type, from: type)
 				const returns = fn and fn:returns()
 				ret = returns and returns.head and returns.head[1] :: any
 			end
-
 			if ret then
-				const new_ret = types.newtable()
-				for k, prop in ret:properties() do
-					if prop.read then
-						new_ret:setproperty(method_names:readproperty(k), prop.read)
-					end
-				end
-				return new_ret
+				return format_interface_casing(ret, method_names)
 			end
-
 			const new = types.newtable()
 			for k, prop in t:properties() do
 				if prop.read then
@@ -332,7 +324,6 @@ type function resolve_objects(objects: type, options: type, from: type)
 			end
 			return new
 		end
-
 		return t
 	end
 
@@ -347,8 +338,8 @@ export type ServerObjects<Objects, Options> = resolve_objects<Objects, Options, 
 export type ClientObjects<Objects, Options> = resolve_objects<Objects, Options, "Client">
 
 export type Define<Objects, Options> = {
-	server: () -> ServerObjects<Objects, Options>,
-	client: () -> ClientObjects<Objects, Options>,
+	server: ServerObjects<Objects, Options>,
+	client: ClientObjects<Objects, Options>,
 }
 
 return nil

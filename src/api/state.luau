@@ -8,9 +8,11 @@ const constants = require("../constants")
 const casing = require("../core/casing")
 const lifecycle = require("../core/lifecycle")
 const serdes = require("../core/serdes")
+const threadpool = require("../core/threadpool")
 const data_types = require("../data_types")
 const types = require("../types")
 
+type DataTypeValue<T> = types.DataTypeValue<T>
 type StateProps<T> = types.StateProps<T>
 type State<T> = types.State<T>
 type StateShared<T> = types.StateShared<T>
@@ -23,11 +25,11 @@ type Cleanup = types.Cleanup
 const IS_SERVER = RunService:IsServer()
 const ROOT_SCOPE_NAME = constants.ROOT_SCOPE_NAME
 
-const function is_derive<T>(getter: StateGetter<T, any>): boolean
+const function is_derive<T, R>(getter: StateGetter<T, R>): boolean
 	return debug.info(getter, "n") == "derive_oper"
 end
 
-const function state<T>(props: StateProps<T>): State<T>
+const function state<T>(props: StateProps<T>): State<DataTypeValue<T>>
 	const value_type = props.value
 	const initial_value = props.initial
 
@@ -43,25 +45,23 @@ const function state<T>(props: StateProps<T>): State<T>
 	}
 
 	local cache = initial_value
-	const subs: { (T) -> () } = {}
+	const subs: { (any) -> () } = {}
 
-	local filter_fn: ((value: T, player: Player) -> T)?
-	local send_fn: ((value: T) -> ())?
+	local filter_fn: ((value: any, player: Player) -> any)?
+	local send_fn: ((value: any) -> ())?
 
-	const function state_set(new_value: T)
+	const function state_set(new_value: any)
 		if new_value == cache then
 			return
 		end
 		cache = new_value
-		for _, sub in subs do
-			task.spawn(sub, new_value)
-		end
+		threadpool.spawn_callbacks(subs, new_value)
 		if send_fn then
 			send_fn(new_value)
 		end
 	end
 
-	const state_derive: index<StateShared<T>, "derive"> = function(...)
+	const state_derive: index<StateShared<any>, "derive"> = function(...)
 		if select("#", ...) == 2 then
 			local last_valueA
 			local last_valueB
@@ -79,8 +79,8 @@ const function state<T>(props: StateProps<T>): State<T>
 
 			return derive_oper
 		end
-		local last_cache: T
-		local last_value
+		local last_cache: any
+		local last_value: any
 		const getter = ...
 
 		const function derive_oper(value): any
@@ -95,9 +95,9 @@ const function state<T>(props: StateProps<T>): State<T>
 		return derive_oper
 	end
 
-	const function state_sub<R>(callback: (new: R, prev: R?) -> (), getter: StateGetter<T, R>?)
+	const function state_sub<R>(callback: (new: R, prev: R?) -> (), getter: StateGetter<any, R>?)
 		local current
-		const tracked: StateGetter<T, any> = getter
+		const tracked: StateGetter<any, any> = getter
 			and if is_derive(getter) then getter else state_derive(getter :: any) :: any
 		const function sub(value)
 			const previous = current
@@ -116,7 +116,7 @@ const function state<T>(props: StateProps<T>): State<T>
 		end
 	end
 
-	const state_subscribe: index<StateShared<T>, "subscribe"> = function(...)
+	const state_subscribe: index<StateShared<any>, "subscribe"> = function(...)
 		if select("#", ...) == 2 then
 			const getter, callback = ...
 			return state_sub(callback, getter)
@@ -125,28 +125,28 @@ const function state<T>(props: StateProps<T>): State<T>
 		return state_sub(callback)
 	end
 
-	const state_listen: index<StateShared<T>, "listen"> = function(...)
+	const state_listen: index<StateShared<any>, "listen"> = function(...)
 		if select("#", ...) == 2 then
 			const getter, callback = ...
 			const last_value = getter(cache)
-			callback(last_value, nil)
+			callback(last_value)
 			return state_sub(callback, getter)
 		end
 		const callback = ...
-		callback(cache, nil)
+		callback(cache)
 		return state_sub(callback)
 	end
 
-	const state_get: index<StateShared<T>, "get"> = function(getter)
+	const state_get: index<StateShared<any>, "get"> = function(getter)
 		if getter then
 			return getter(cache)
 		end
 		return cache
 	end :: any
 
-	local object: StateServer<T> & StateClient<T>
+	local object: StateServer<any> & StateClient<any>
 
-	const function state_server(options: DefOptions, path: string, lifecycle: lifecycle.Lifecycle): StateServer<T>
+	const function state_server(options: DefOptions, path: string, lifecycle: lifecycle.Lifecycle): StateServer<any>
 		if object then
 			return object
 		end
@@ -167,7 +167,7 @@ const function state<T>(props: StateProps<T>): State<T>
 			end
 		end
 
-		const function send_all(value: T)
+		const function send_all(value: any)
 			if filter_fn then
 				for _, player in Players:GetPlayers() do
 					write(saves[player], { type = "dispatch", value = filter_fn(value, player) })
@@ -197,7 +197,7 @@ const function state<T>(props: StateProps<T>): State<T>
 					state_set(value_or_cb)
 				end
 			end,
-			[method_names["filter"]] = function(callback: (value: T, player: Player) -> T)
+			[method_names["filter"]] = function(callback: (value: any, player: Player) -> any)
 				filter_fn = callback
 			end,
 			[method_names["derive"]] = state_derive,
@@ -209,7 +209,7 @@ const function state<T>(props: StateProps<T>): State<T>
 		return object
 	end
 
-	const function state_client(options: DefOptions, path: string, lifecycle: lifecycle.Lifecycle): StateClient<T>
+	const function state_client(options: DefOptions, path: string, lifecycle: lifecycle.Lifecycle): StateClient<any>
 		if object then
 			return object
 		end

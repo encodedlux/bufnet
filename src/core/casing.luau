@@ -16,7 +16,11 @@ end
 
 const DEFAULT_CASE: DefaultCase = "Snake"
 
-const function build_case<P, C, S>(pascal: P, camel: C, snake: S): { Pascal: P, Camel: C, Snake: S }
+const function build_case<Pascal, Camel, Snake>(
+	pascal: Pascal | "",
+	camel: Camel | "",
+	snake: Snake | ""
+): { Pascal: Pascal, Camel: Camel, Snake: Snake }
 	return {
 		Pascal = pascal,
 		Camel = camel,
@@ -25,31 +29,27 @@ const function build_case<P, C, S>(pascal: P, camel: C, snake: S): { Pascal: P, 
 end
 
 const cases = {
-	server = build_case("Server" :: "Server", "server" :: "server", "server" :: "server"),
-	client = build_case("Client" :: "Client", "client" :: "client", "client" :: "client"),
-	flush = build_case("Flush" :: "Flush", "flush" :: "flush", "flush" :: "flush"),
-	fire = build_case("Fire" :: "Fire", "fire" :: "fire", "fire" :: "fire"),
-	fire_all = build_case("FireAll" :: "FireAll", "fireAll" :: "fireAll", "fire_all" :: "fire_all"),
-	fire_list = build_case("FireList" :: "FireList", "fireList" :: "fireList", "fire_list" :: "fire_list"),
-	fire_except = build_case(
-		"FireExcept" :: "FireExcept",
-		"fireExcept" :: "fireExcept",
-		"fire_except" :: "fire_except"
-	),
-	invoke = build_case("Invoke" :: "Invoke", "invoke" :: "invoke", "invoke" :: "invoke"),
-	on = build_case("On" :: "On", "on" :: "on", "on" :: "on"),
-	iter = build_case("Iter" :: "Iter", "iter" :: "iter", "iter" :: "iter"),
-	derive = build_case("Derive" :: "Derive", "derive" :: "derive", "derive" :: "derive"),
-	set = build_case("Set" :: "Set", "set" :: "set", "set" :: "set"),
-	filter = build_case("Filter" :: "Filter", "filter" :: "filter", "filter" :: "filter"),
-	subscribe = build_case("Subscribe" :: "Subscribe", "subscribe" :: "subscribe", "subscribe" :: "subscribe"),
-	listen = build_case("Listen" :: "Listen", "listen" :: "listen", "listen" :: "listen"),
-	get = build_case("Get" :: "Get", "get" :: "get", "get" :: "get"),
+	server = build_case("Server", "server", "server"),
+	client = build_case("Client", "client", "client"),
+	flush = build_case("Flush", "flush", "flush"),
+	fire = build_case("Fire", "fire", "fire"),
+	fire_all = build_case("FireAll", "fireAll", "fire_all"),
+	fire_list = build_case("FireList", "fireList", "fire_list"),
+	fire_except = build_case("FireExcept", "fireExcept", "fire_except"),
+	invoke = build_case("Invoke", "invoke", "invoke"),
+	on = build_case("On", "on", "on"),
+	iter = build_case("Iter", "iter", "iter"),
+	derive = build_case("Derive", "derive", "derive"),
+	set = build_case("Set", "set", "set"),
+	filter = build_case("Filter", "filter", "filter"),
+	subscribe = build_case("Subscribe", "subscribe", "subscribe"),
+	listen = build_case("Listen", "listen", "listen"),
+	get = build_case("Get", "get", "get"),
 }
 
 type Cases = typeof(cases)
 
-const function get_casing<C>(case: (C & Case)?): get_casing<C>
+const function get_casing<C>(case: (C | Case)?): get_casing<C>
 	const casing = {}
 	for k, options in cases :: any do
 		casing[k] = options[case or DEFAULT_CASE]
