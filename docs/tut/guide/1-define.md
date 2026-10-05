@@ -23,32 +23,18 @@ return define("game", {
 
 ## Accessing the definition
 
-A definition exposes `.server()` and `.client()`:
+A definition exposes `.server` and `.client`:
 
 ```luau
 const net = require(path.to.net)
 
-const server = net.server() -- for server-side only
-const client = net.client() -- for client-side only
+const net_server = net.server -- for server-side only
+const net_client = net.client -- for client-side only
 ```
 
 Both return the same network definition, with the appropriate interface for each environment.
 
 This allows the same definition to be shared between server and client code without maintaining separate network declarations.
-
-Optionally, you can create a networking server file:
-```luau
--- net_server.luau
-const net = require(path.to.net)
-return net.server()
-```
-
-And a client file:
-```luau
--- net_client.luau
-const net = require(path.to.net)
-return net.client()
-```
 
 ## Options
 
@@ -73,19 +59,15 @@ Default: `Async`
 Options: `Async`, `Sync`, `Polling`
 
 ### `auto_flush`
-Reliable and Unreliable calls are combined into a single delivery once per frame. When set to `false`, the automatic send is disabled and you become responsible for calling `flush()` — exposed on both `.server()` and `.client()` returns.
+Reliable and Unreliable calls are combined into a single delivery once per frame. When set to `false`, the automatic send is disabled and you become responsible for calling `flush()` — exposed on both `.server` and `.client`.
 
 Default: `true`
 
 Server:
 ```luau
-RunService.Heartbeat:Connect(function()
-	net_server.flush() -- delivers every event/funct manually
-end)
+RunService.Heartbeat:Connect(net_server.flush) -- delivers every event/funct manually
 ```
 Client:
 ```luau
-RunService.Heartbeat:Connect(function()
-	net_client.flush() -- delivers every event/funct manually
-end)
+RunService.Heartbeat:Connect(net_client.flush) -- delivers every event/funct manually
 ```

@@ -14,7 +14,7 @@ return define("game", {
 ## Usage
 
 ```luau
-const net_server = net.server()
+const net_server = net.server
 
 net_server.example_scope.my_event.fire_all("Hello World")
 ```

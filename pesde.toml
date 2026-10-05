@@ -1,6 +1,6 @@
 name = "encodedlux/bufnet"
-version = "0.1.4"
-description = "Lightweight networking library for Roblox built for performance, type safety and efficient data communication."
+version = "0.1.5"
+description = "Modern declarative buffer networking."
 authors = ["encodedlux"]
 repository = "https://github.com/encodedlux/bufnet"
 license = "MIT"

@@ -1,6 +1,6 @@
 # Installation
 
-BufNet can be installed through [Wally](https://wally.run/) or [Pesde](https://pesde.dev/), depending on your preferred package manager.
+BufNet can be installed through [Wally](https://wally.run/package/encodedlux/bufnet) or [Pesde](https://pesde.dev/packages/encodedlux/bufnet), depending on your preferred package manager.
 
 ## Wally
 

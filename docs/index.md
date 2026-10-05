@@ -1,15 +1,10 @@
 ---
-# https://vitepress.dev/reference/default-theme-home-page
 layout: home
-pageClass: home
-next:
-  text: 'Introduction'
-  link: '/tut/crash-course/1-overview'
 
 hero:
   name: "BufNet"
-  text: "Typed and lightweight networking"
-  tagline: "Lightweight networking library for Roblox built for performance, type safety and efficient data communication."
+  text: "Modern declarative buffer networking"
+  tagline: "Compact data serialization, strict Luau type safety, and a clean, intuitive API for Roblox."
   actions:
     - theme: brand
       text: Learn
@@ -19,11 +14,13 @@ hero:
       link: https://github.com/encodedlux/bufnet
 
 features:
-  - title: "Typed Features"
-    details: "Support the new type-solver and utilize the latest type features (such as type functions) to improve developer experience."
-  - title: "Efficient by Design"
-    details: "Send structured data efficiently with a networking layer designed to keep payloads compact and communication fast."
-  - title: "Simple API"
-    details: "Events, functions, and state all follow the same familiar patterns, making your networking code easier to build, organize, and maintain."
+  - title: "Typed"
+    details: "Built on Luau type functions to dynamically generate autocomplete, interfaces, and casing conventions."
+  - title: "Compact"
+    details: "Efficient data serialization keeps communication fast and lightweight."
+  - title: "Accessible"
+    details: "No plugins, code generation steps, or external CLIs. Just require and go."
+  - title: "Secure"
+    details: "Binary buffers make network traffic harder to reverse-engineer, while automatically validating all received data."
 ---
 

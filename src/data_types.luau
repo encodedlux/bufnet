@@ -369,10 +369,6 @@ const function array<T>(value_type: T)
 		return current_offset - offset
 	end, @native function(buff, offset, refs)
 		const array_length = readu16(buff, offset)
-		assert(
-			array_length <= 2000,
-			`[{ROOT_SCOPE_NAME}]:Expected "array_length" to be smaller than 2000, got {array_length} instead.`
-		)
 		local current_offset = offset + SHORT
 		const array: { any } = table.create(array_length)
 		for i = 1, array_length do
