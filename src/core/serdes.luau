@@ -67,103 +67,7 @@ const function compile_write_args(args: { DataType }): (buffer, number, { [any]:
 			const len5 = write5(buff, offset + len1 + len2 + len3 + len4, a5, refs)
 			return len1 + len2 + len3 + len4 + len5
 		end
-	elseif count == 6 then
-		const write1, write2, write3, write4, write5, write6 =
-			args[1].write, args[2].write, args[3].write, args[4].write, args[5].write, args[6].write
-		return function(buff, offset, refs, a1, a2, a3, a4, a5, a6)
-			const len1 = write1(buff, offset, a1, refs)
-			const len2 = write2(buff, offset + len1, a2, refs)
-			const len3 = write3(buff, offset + len1 + len2, a3, refs)
-			const len4 = write4(buff, offset + len1 + len2 + len3, a4, refs)
-			const len5 = write5(buff, offset + len1 + len2 + len3 + len4, a5, refs)
-			const len6 = write6(buff, offset + len1 + len2 + len3 + len4 + len5, a6, refs)
-			return len1 + len2 + len3 + len4 + len5 + len6
-		end
-	elseif count == 7 then
-		const write1, write2, write3, write4, write5, write6, write7 =
-			args[1].write, args[2].write, args[3].write, args[4].write, args[5].write, args[6].write, args[7].write
-		return function(buff, offset, refs, a1, a2, a3, a4, a5, a6, a7)
-			const len1 = write1(buff, offset, a1, refs)
-			const len2 = write2(buff, offset + len1, a2, refs)
-			const len3 = write3(buff, offset + len1 + len2, a3, refs)
-			const len4 = write4(buff, offset + len1 + len2 + len3, a4, refs)
-			const len5 = write5(buff, offset + len1 + len2 + len3 + len4, a5, refs)
-			const len6 = write6(buff, offset + len1 + len2 + len3 + len4 + len5, a6, refs)
-			const len7 = write7(buff, offset + len1 + len2 + len3 + len4 + len5 + len6, a7, refs)
-			return len1 + len2 + len3 + len4 + len5 + len6 + len7
-		end
-	elseif count == 8 then
-		const write1, write2, write3, write4, write5, write6, write7, write8 =
-			args[1].write,
-			args[2].write,
-			args[3].write,
-			args[4].write,
-			args[5].write,
-			args[6].write,
-			args[7].write,
-			args[8].write
-		return function(buff, offset, refs, a1, a2, a3, a4, a5, a6, a7, a8)
-			const len1 = write1(buff, offset, a1, refs)
-			const len2 = write2(buff, offset + len1, a2, refs)
-			const len3 = write3(buff, offset + len1 + len2, a3, refs)
-			const len4 = write4(buff, offset + len1 + len2 + len3, a4, refs)
-			const len5 = write5(buff, offset + len1 + len2 + len3 + len4, a5, refs)
-			const len6 = write6(buff, offset + len1 + len2 + len3 + len4 + len5, a6, refs)
-			const len7 = write7(buff, offset + len1 + len2 + len3 + len4 + len5 + len6, a7, refs)
-			const len8 = write8(buff, offset + len1 + len2 + len3 + len4 + len5 + len6 + len7, a8, refs)
-			return len1 + len2 + len3 + len4 + len5 + len6 + len7 + len8
-		end
-	elseif count == 9 then
-		const write1, write2, write3, write4, write5, write6, write7, write8, write9 =
-			args[1].write,
-			args[2].write,
-			args[3].write,
-			args[4].write,
-			args[5].write,
-			args[6].write,
-			args[7].write,
-			args[8].write,
-			args[9].write
-		return function(buff, offset, refs, a1, a2, a3, a4, a5, a6, a7, a8, a9)
-			const len1 = write1(buff, offset, a1, refs)
-			const len2 = write2(buff, offset + len1, a2, refs)
-			const len3 = write3(buff, offset + len1 + len2, a3, refs)
-			const len4 = write4(buff, offset + len1 + len2 + len3, a4, refs)
-			const len5 = write5(buff, offset + len1 + len2 + len3 + len4, a5, refs)
-			const len6 = write6(buff, offset + len1 + len2 + len3 + len4 + len5, a6, refs)
-			const len7 = write7(buff, offset + len1 + len2 + len3 + len4 + len5 + len6, a7, refs)
-			const len8 = write8(buff, offset + len1 + len2 + len3 + len4 + len5 + len6 + len7, a8, refs)
-			const len9 = write9(buff, offset + len1 + len2 + len3 + len4 + len5 + len6 + len7 + len8, a9, refs)
-			return len1 + len2 + len3 + len4 + len5 + len6 + len7 + len8 + len9
-		end
-	elseif count == 10 then
-		const write1, write2, write3, write4, write5, write6, write7, write8, write9, write10 =
-			args[1].write,
-			args[2].write,
-			args[3].write,
-			args[4].write,
-			args[5].write,
-			args[6].write,
-			args[7].write,
-			args[8].write,
-			args[9].write,
-			args[10].write
-		return function(buff, offset, refs, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10)
-			const len1 = write1(buff, offset, a1, refs)
-			const len2 = write2(buff, offset + len1, a2, refs)
-			const len3 = write3(buff, offset + len1 + len2, a3, refs)
-			const len4 = write4(buff, offset + len1 + len2 + len3, a4, refs)
-			const len5 = write5(buff, offset + len1 + len2 + len3 + len4, a5, refs)
-			const len6 = write6(buff, offset + len1 + len2 + len3 + len4 + len5, a6, refs)
-			const len7 = write7(buff, offset + len1 + len2 + len3 + len4 + len5 + len6, a7, refs)
-			const len8 = write8(buff, offset + len1 + len2 + len3 + len4 + len5 + len6 + len7, a8, refs)
-			const len9 = write9(buff, offset + len1 + len2 + len3 + len4 + len5 + len6 + len7 + len8, a9, refs)
-			const len10 =
-				write10(buff, offset + len1 + len2 + len3 + len4 + len5 + len6 + len7 + len8 + len9, a10, refs)
-			return len1 + len2 + len3 + len4 + len5 + len6 + len7 + len8 + len9 + len10
-		end
 	end
-
 	return function(buff, offset, refs, ...)
 		local bytes = 0
 		for i = 1, count do
@@ -211,120 +115,6 @@ const function compile_read_args(args: { DataType }): (buffer, number, { [any]: 
 			const len5, val5 = read5(buff, offset + len1 + len2 + len3 + len4, refs)
 			return len1 + len2 + len3 + len4 + len5, val1, val2, val3, val4, val5
 		end
-	elseif count == 6 then
-		const read1, read2, read3, read4, read5, read6 =
-			args[1].read, args[2].read, args[3].read, args[4].read, args[5].read, args[6].read
-		return function(buff, offset, refs)
-			const len1, val1 = read1(buff, offset, refs)
-			const len2, val2 = read2(buff, offset + len1, refs)
-			const len3, val3 = read3(buff, offset + len1 + len2, refs)
-			const len4, val4 = read4(buff, offset + len1 + len2 + len3, refs)
-			const len5, val5 = read5(buff, offset + len1 + len2 + len3 + len4, refs)
-			const len6, val6 = read6(buff, offset + len1 + len2 + len3 + len4 + len5, refs)
-			return len1 + len2 + len3 + len4 + len5 + len6, val1, val2, val3, val4, val5, val6
-		end
-	elseif count == 7 then
-		const read1, read2, read3, read4, read5, read6, read7 =
-			args[1].read, args[2].read, args[3].read, args[4].read, args[5].read, args[6].read, args[7].read
-		return function(buff, offset, refs)
-			const len1, val1 = read1(buff, offset, refs)
-			const len2, val2 = read2(buff, offset + len1, refs)
-			const len3, val3 = read3(buff, offset + len1 + len2, refs)
-			const len4, val4 = read4(buff, offset + len1 + len2 + len3, refs)
-			const len5, val5 = read5(buff, offset + len1 + len2 + len3 + len4, refs)
-			const len6, val6 = read6(buff, offset + len1 + len2 + len3 + len4 + len5, refs)
-			const len7, val7 = read7(buff, offset + len1 + len2 + len3 + len4 + len5 + len6, refs)
-			return len1 + len2 + len3 + len4 + len5 + len6 + len7, val1, val2, val3, val4, val5, val6, val7
-		end
-	elseif count == 8 then
-		const read1, read2, read3, read4, read5, read6, read7, read8 =
-			args[1].read,
-			args[2].read,
-			args[3].read,
-			args[4].read,
-			args[5].read,
-			args[6].read,
-			args[7].read,
-			args[8].read
-		return function(buff, offset, refs)
-			const len1, val1 = read1(buff, offset, refs)
-			const len2, val2 = read2(buff, offset + len1, refs)
-			const len3, val3 = read3(buff, offset + len1 + len2, refs)
-			const len4, val4 = read4(buff, offset + len1 + len2 + len3, refs)
-			const len5, val5 = read5(buff, offset + len1 + len2 + len3 + len4, refs)
-			const len6, val6 = read6(buff, offset + len1 + len2 + len3 + len4 + len5, refs)
-			const len7, val7 = read7(buff, offset + len1 + len2 + len3 + len4 + len5 + len6, refs)
-			const len8, val8 = read8(buff, offset + len1 + len2 + len3 + len4 + len5 + len6 + len7, refs)
-			return len1 + len2 + len3 + len4 + len5 + len6 + len7 + len8, val1, val2, val3, val4, val5, val6, val7, val8
-		end
-	elseif count == 9 then
-		const read1, read2, read3, read4, read5, read6, read7, read8, read9 =
-			args[1].read,
-			args[2].read,
-			args[3].read,
-			args[4].read,
-			args[5].read,
-			args[6].read,
-			args[7].read,
-			args[8].read,
-			args[9].read
-		return function(buff, offset, refs)
-			const len1, val1 = read1(buff, offset, refs)
-			const len2, val2 = read2(buff, offset + len1, refs)
-			const len3, val3 = read3(buff, offset + len1 + len2, refs)
-			const len4, val4 = read4(buff, offset + len1 + len2 + len3, refs)
-			const len5, val5 = read5(buff, offset + len1 + len2 + len3 + len4, refs)
-			const len6, val6 = read6(buff, offset + len1 + len2 + len3 + len4 + len5, refs)
-			const len7, val7 = read7(buff, offset + len1 + len2 + len3 + len4 + len5 + len6, refs)
-			const len8, val8 = read8(buff, offset + len1 + len2 + len3 + len4 + len5 + len6 + len7, refs)
-			const len9, val9 = read9(buff, offset + len1 + len2 + len3 + len4 + len5 + len6 + len7 + len8, refs)
-			return len1 + len2 + len3 + len4 + len5 + len6 + len7 + len8 + len9,
-				val1,
-				val2,
-				val3,
-				val4,
-				val5,
-				val6,
-				val7,
-				val8,
-				val9
-		end
-	elseif count == 10 then
-		const read1, read2, read3, read4, read5, read6, read7, read8, read9, read10 =
-			args[1].read,
-			args[2].read,
-			args[3].read,
-			args[4].read,
-			args[5].read,
-			args[6].read,
-			args[7].read,
-			args[8].read,
-			args[9].read,
-			args[10].read
-		return function(buff, offset, refs)
-			const len1, val1 = read1(buff, offset, refs)
-			const len2, val2 = read2(buff, offset + len1, refs)
-			const len3, val3 = read3(buff, offset + len1 + len2, refs)
-			const len4, val4 = read4(buff, offset + len1 + len2 + len3, refs)
-			const len5, val5 = read5(buff, offset + len1 + len2 + len3 + len4, refs)
-			const len6, val6 = read6(buff, offset + len1 + len2 + len3 + len4 + len5, refs)
-			const len7, val7 = read7(buff, offset + len1 + len2 + len3 + len4 + len5 + len6, refs)
-			const len8, val8 = read8(buff, offset + len1 + len2 + len3 + len4 + len5 + len6 + len7, refs)
-			const len9, val9 = read9(buff, offset + len1 + len2 + len3 + len4 + len5 + len6 + len7 + len8, refs)
-			const len10, val10 =
-				read10(buff, offset + len1 + len2 + len3 + len4 + len5 + len6 + len7 + len8 + len9, refs)
-			return len1 + len2 + len3 + len4 + len5 + len6 + len7 + len8 + len9 + len10,
-				val1,
-				val2,
-				val3,
-				val4,
-				val5,
-				val6,
-				val7,
-				val8,
-				val9,
-				val10
-		end
 	end
 	return function(buff, offset, refs)
 		local bytes = 0
@@ -365,39 +155,21 @@ end
 
 const function compile_write_event(args: { DataType }, id: number)
 	const count = #args
-	const args_size = compile_args_size(args)
-
 	if count == 1 then
-		const write1 = args[1].write
-		if type(args_size) == "number" then
-			const total = 1 + args_size
-			return function(save: BufferSave, value)
-				if not save then
-					return
-				end
-				ensure(save, total)
-				const offset = save.cursor
-				const buff = save.buff
-				const refs = save.refs
-				writeu8(buff, offset, id)
-				const bytes = 1 + write1(buff, offset + 1, value, refs)
-				save.cursor += bytes
-				if IS_DEV and total ~= bytes then
-					warn(`[{ROOT_SCOPE_NAME}]: Data size mismatch, expected {total} but got {bytes}`)
-				end
-			end
-		end
+		const write = args[1].write
+		const size = args[1].size
+		const success_total = if type(size) == "number" then 1 + size else nil
 		return function(save: BufferSave, value)
 			if not save then
 				return
 			end
-			const total = 1 + args_size(value)
+			const total = success_total or (1 + (size :: any)(value))
 			ensure(save, total)
 			const offset = save.cursor
 			const buff = save.buff
 			const refs = save.refs
 			writeu8(buff, offset, id)
-			const bytes = 1 + write1(buff, offset + 1, value, refs)
+			const bytes = 1 + write(buff, offset + 1, value, refs)
 			save.cursor += bytes
 			if IS_DEV and total ~= bytes then
 				warn(`[{ROOT_SCOPE_NAME}]: Data size mismatch, expected {total} but got {bytes}`)
@@ -405,36 +177,20 @@ const function compile_write_event(args: { DataType }, id: number)
 		end
 	end
 
-	const write_values = compile_write_args(args)
-	if type(args_size) == "number" then
-		const total = 1 + args_size
-		return function(save: BufferSave, ...)
-			if not save then
-				return
-			end
-			ensure(save, total)
-			const offset = save.cursor
-			const buff = save.buff
-			const refs = save.refs
-			writeu8(buff, offset, id)
-			const bytes = 1 + write_values(buff, offset + 1, refs, ...)
-			save.cursor += bytes
-			if IS_DEV and total ~= bytes then
-				warn(`[{ROOT_SCOPE_NAME}]: Data size mismatch, expected {total} but got {bytes}`)
-			end
-		end
-	end
+	const write_args = compile_write_args(args)
+	const args_size = compile_args_size(args)
+	const success_total = if type(args_size) == "number" then 1 + args_size else nil
 	return function(save: BufferSave, ...)
 		if not save then
 			return
 		end
-		const total = 1 + args_size(...)
+		const total = success_total or (1 + (args_size :: any)(...))
 		ensure(save, total)
 		const offset = save.cursor
 		const buff = save.buff
 		const refs = save.refs
 		writeu8(buff, offset, id)
-		const bytes = 1 + write_values(buff, offset + 1, refs, ...)
+		const bytes = 1 + write_args(buff, offset + 1, refs, ...)
 		save.cursor += bytes
 		if IS_DEV and total ~= bytes then
 			warn(`[{ROOT_SCOPE_NAME}]: Data size mismatch, expected {total} but got {bytes}`)
@@ -444,41 +200,22 @@ end
 
 const function compile_write_funct_invoke(args: { DataType }, id: number)
 	const count = #args
-	const args_size = compile_args_size(args)
-
 	if count == 1 then
-		const write1 = args[1].write
-		if type(args_size) == "number" then
-			const total = 2 + args_size
-			return function(save: BufferSave, invoke_id: number, value)
-				if not save then
-					return
-				end
-				ensure(save, total)
-				const offset = save.cursor
-				const buff = save.buff
-				const refs = save.refs
-				writeu8(buff, offset, id)
-				writeu8(buff, offset + 1, invoke_id)
-				const bytes = 2 + write1(buff, offset + 2, value, refs)
-				save.cursor += bytes
-				if IS_DEV and total ~= bytes then
-					warn(`[{ROOT_SCOPE_NAME}]: Data size mismatch, expected {total} but got {bytes}`)
-				end
-			end
-		end
+		const write = args[1].write
+		const size = args[1].size
+		const success_total = if type(size) == "number" then 2 + size else nil
 		return function(save: BufferSave, invoke_id: number, value)
 			if not save then
 				return
 			end
-			const total = 2 + args_size(value)
+			const total = success_total or (2 + (size :: any)(value))
 			ensure(save, total)
 			const offset = save.cursor
 			const buff = save.buff
 			const refs = save.refs
 			writeu8(buff, offset, id)
 			writeu8(buff, offset + 1, invoke_id)
-			const bytes = 2 + write1(buff, offset + 2, value, refs)
+			const bytes = 2 + write(buff, offset + 2, value, refs)
 			save.cursor += bytes
 			if IS_DEV and total ~= bytes then
 				warn(`[{ROOT_SCOPE_NAME}]: Data size mismatch, expected {total} but got {bytes}`)
@@ -487,30 +224,13 @@ const function compile_write_funct_invoke(args: { DataType }, id: number)
 	end
 
 	const write_args = compile_write_args(args)
-	if type(args_size) == "number" then
-		const total = 2 + args_size
-		return function(save: BufferSave, invoke_id: number, ...)
-			if not save then
-				return
-			end
-			ensure(save, total)
-			const offset = save.cursor
-			const buff = save.buff
-			const refs = save.refs
-			writeu8(buff, offset, id)
-			writeu8(buff, offset + 1, invoke_id)
-			const bytes = 2 + write_args(buff, offset + 2, refs, ...)
-			save.cursor += bytes
-			if IS_DEV and total ~= bytes then
-				warn(`[{ROOT_SCOPE_NAME}]: Data size mismatch, expected {total} but got {bytes}`)
-			end
-		end
-	end
+	const args_size = compile_args_size(args)
+	const success_total = if type(args_size) == "number" then 2 + args_size else nil
 	return function(save: BufferSave, invoke_id: number, ...)
 		if not save then
 			return
 		end
-		const total = 2 + args_size(...)
+		const total = success_total or (2 + (args_size :: any)(...))
 		ensure(save, total)
 		const offset = save.cursor
 		const buff = save.buff
@@ -527,11 +247,10 @@ end
 
 const function compile_write_funct_ret(args: { DataType }, id: number)
 	const count = #args
-	const args_size = compile_args_size(args)
-	const success_total = if type(args_size) == "number" then 3 + args_size else nil
-
 	if count == 1 then
-		const write1 = args[1].write
+		const write = args[1].write
+		const size = args[1].size
+		const success_total = if type(size) == "number" then 3 + size else nil
 		return function(save: BufferSave, invoke_id: number, success: boolean, err: string?, value)
 			if not save then
 				return
@@ -547,7 +266,7 @@ const function compile_write_funct_ret(args: { DataType }, id: number)
 				warn(`[{ROOT_SCOPE_NAME}]: A function encountered an error, {err}`)
 				return
 			end
-			const total = success_total or (3 + (args_size :: (...any) -> number)(value))
+			const total = success_total or (3 + (size :: any)(value))
 			ensure(save, total)
 			const offset = save.cursor
 			const buff = save.buff
@@ -555,7 +274,7 @@ const function compile_write_funct_ret(args: { DataType }, id: number)
 			writeu8(buff, offset, id)
 			writeu8(buff, offset + 1, invoke_id)
 			writeu8(buff, offset + 2, 1)
-			const bytes = 3 + write1(buff, offset + 3, value, refs)
+			const bytes = 3 + write(buff, offset + 3, value, refs)
 			save.cursor += bytes
 			if IS_DEV and total ~= bytes then
 				warn(`[{ROOT_SCOPE_NAME}]: Data size mismatch, expected {total} but got {bytes}`)
@@ -564,6 +283,8 @@ const function compile_write_funct_ret(args: { DataType }, id: number)
 	end
 
 	const write_args = compile_write_args(args)
+	const args_size = compile_args_size(args)
+	const success_total = if type(args_size) == "number" then 3 + args_size else nil
 	return function(save: BufferSave, invoke_id: number, success: boolean, err: string?, ...)
 		if not save then
 			return
@@ -579,7 +300,7 @@ const function compile_write_funct_ret(args: { DataType }, id: number)
 			warn(`[{ROOT_SCOPE_NAME}]: A function encountered an error, {err}`)
 			return
 		end
-		const total = success_total or (3 + (args_size :: (...any) -> number)(...))
+		const total = success_total or (3 + (args_size :: any)(...))
 		ensure(save, total)
 		const offset = save.cursor
 		const buff = save.buff

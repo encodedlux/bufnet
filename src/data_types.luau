@@ -7,8 +7,8 @@ const constants = require("./constants")
 const t = require("./types")
 
 type DataType<T = any> = t.DataType<T>
-type DataTypeValue<T> = t.DataTypeValue<T>
-type DataTypeSchema<T> = t.DataTypeSchema<T>
+type Infer<T> = t.Infer<T>
+type InferFromFields<T> = t.InferFromFields<T>
 
 const BYTE = 1
 const SHORT = 2
@@ -96,7 +96,7 @@ const function create_data_type<T>(
 	size: ((value: T) -> number) | number
 ): DataType<T>
 	return {
-		__T = (nil :: any) :: T,
+		infer = (nil :: any) :: T,
 		write = write_fn,
 		read = read_fn,
 		size = size,
@@ -109,8 +109,8 @@ const function refine<T>(value_type: T)
 	const value_read = value_type.read
 	const value_size = value_type.size
 
-	return function(refine_fn: (value: DataTypeValue<T>) -> (boolean, string?))
-		return create_data_type<<DataTypeValue<T>>>(value_write, @native function(buff, offset, refs)
+	return function(refine_fn: (value: Infer<T>) -> (boolean, string?))
+		return create_data_type<<Infer<T>>>(value_write, @native function(buff, offset, refs)
 			const size, value = value_read(buff, offset, refs)
 			local success, reason = refine_fn(value)
 			if not success then
@@ -323,7 +323,7 @@ const function optional<T>(value_type: T)
 			return if value == nil then BYTE else BYTE + value_size(value)
 		end
 
-	return create_data_type<<DataTypeValue<T>?>>(@native function(buff, offset, value, refs)
+	return create_data_type<<Infer<T>?>>(@native function(buff, offset, value, refs)
 		if value == nil then
 			writeu8(buff, offset, 0)
 			return BYTE
@@ -360,7 +360,7 @@ const function array<T>(value_type: T)
 			return total
 		end
 
-	return create_data_type<<{ DataTypeValue<T> }>>(@native function(buff, offset, value, refs)
+	return create_data_type<<{ Infer<T> }>>(@native function(buff, offset, value, refs)
 		writeu16(buff, offset, #value)
 		local current_offset = offset + SHORT
 		for i = 1, #value do
@@ -384,9 +384,9 @@ const function struct<T>(schema: T)
 	const schema = schema :: { read [string]: DataType }
 
 	const keys: { string } = {}
-	const value_writes: { index<DataType<DataTypeSchema<T>>, "write"> } = {}
-	const value_reads: { index<DataType<DataTypeSchema<T>>, "read"> } = {}
-	const value_sizes: { index<DataType<DataTypeSchema<T>>, "size"> } = {}
+	const value_writes: { index<DataType<InferFromFields<T>>, "write"> } = {}
+	const value_reads: { index<DataType<InferFromFields<T>>, "read"> } = {}
+	const value_sizes: { index<DataType<InferFromFields<T>>, "size"> } = {}
 
 	for key in schema :: any do
 		keys[#keys + 1] = key
@@ -420,7 +420,7 @@ const function struct<T>(schema: T)
 			return total
 		end
 
-	return create_data_type<<DataTypeSchema<T>>>(@native function(buff, offset, value, refs)
+	return create_data_type<<InferFromFields<T>>>(@native function(buff, offset, value, refs)
 		local current_offset = offset
 		for i = 1, #value_writes do
 			current_offset += value_writes[i](buff, current_offset, (value :: any)[keys[i]], refs)
@@ -449,7 +449,7 @@ const function map<K, V>(key_type: K, value_type: V)
 	const value_read = value_type.read
 	const value_size = value_type.size
 
-	return create_data_type<<{ [DataTypeValue<K>]: DataTypeValue<V> }>>(@native function(buff, offset, value, refs)
+	return create_data_type<<{ [Infer<K>]: Infer<V> }>>(@native function(buff, offset, value, refs)
 		local current_offset = offset + SHORT
 		local map_length = 0
 		for k, v in value do
@@ -487,7 +487,7 @@ const function set<K>(key_type: K)
 	const key_read = key_type.read
 	const key_size = key_type.size
 
-	return create_data_type<<{ [DataTypeValue<K>]: true }>>(@native function(buff, offset, value, refs)
+	return create_data_type<<{ [Infer<K>]: true }>>(@native function(buff, offset, value, refs)
 		local current_offset = offset + SHORT
 		local set_length = 0
 		for k in value do
@@ -560,7 +560,7 @@ type function union_of_fields(ty: type)
 			continue
 		end
 		assert(fields:is("table"), "requires a table value")
-		const tagged_fields = TaggedType(tag, DataTypeSchema(fields))
+		const tagged_fields = TaggedType(tag, InferFromFields(fields))
 		union = if union then types.unionof(union, tagged_fields) else tagged_fields
 	end
 	return if union then union else types.singleton(nil)
@@ -609,11 +609,28 @@ const function tagged<T>(definition: T)
 	end)
 end
 
-const function tuple<T...>(...: T...): () -> T...
+-- NOTE: Overloaded up to a limit because generic `T...` breaks UDTF inspection (`Type:returns()`).
+-- Revert back to `tuple<T...>(...: T...): () -> T...` once Luau supports generic type packs in UDTFs.
+type function tuple(max_args: type)
+	const count = max_args:is("singleton") and tonumber(max_args:value())
+	local intersection = nil
+	for args_count = 1, count :: number do
+		const args: { type } = {}
+		for i = 1, args_count do
+			args[i] = types.generic("T" .. i)
+		end
+		const get_args = types.newfunction({}, { head = args })
+		const tuple_fn = types.newfunction({ head = args }, { head = { get_args } }, args)
+		intersection = if intersection then types.intersectionof(intersection, tuple_fn) else tuple_fn
+	end
+	return if intersection then intersection else types.singleton(nil)
+end
+
+const tuple: tuple<"20"> = function(...)
 	const args = { ... }
 	return @native function()
 		return table.unpack(args)
-	end :: any
+	end
 end
 
 return {

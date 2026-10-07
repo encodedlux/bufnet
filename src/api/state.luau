@@ -12,7 +12,7 @@ const threadpool = require("../core/threadpool")
 const data_types = require("../data_types")
 const types = require("../types")
 
-type DataTypeValue<T> = types.DataTypeValue<T>
+type Infer<T> = types.Infer<T>
 type StateProps<T> = types.StateProps<T>
 type State<T> = types.State<T>
 type StateShared<T> = types.StateShared<T>
@@ -29,7 +29,7 @@ const function is_derive<T, R>(getter: StateGetter<T, R>): boolean
 	return debug.info(getter, "n") == "derive_oper"
 end
 
-const function state<T>(props: StateProps<T>): State<DataTypeValue<T>>
+const function state<T>(props: StateProps<T>): State<Infer<T>>
 	const value_type = props.value
 	const initial_value = props.initial
 
@@ -240,7 +240,6 @@ const function state<T>(props: StateProps<T>): State<DataTypeValue<T>>
 
 	return {
 		type = "state",
-		props = props,
 		server = state_server,
 		client = state_client,
 	}

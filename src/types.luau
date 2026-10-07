@@ -3,36 +3,36 @@ const casing = require("./core/casing")
 export type Case = casing.Case
 export type get_casing<T> = casing.get_casing<T>
 
-export type DataType<T = unknown> = {
-	read __T: T,
-	read write: (buff: buffer, offset: number, value: T, refs: { [any]: any }) -> number,
+export type DataType<T = unknown, V = T> = {
+	read infer: T,
+	read write: (buff: buffer, offset: number, value: V, refs: { [any]: any }) -> number,
 	read read: (buff: buffer, offset: number, refs: { [any]: any }) -> (number, T),
-	read size: number | (value: T) -> number,
+	read size: number | (value: V) -> number,
 }
 
-export type DataTypeValue<T> = index<T, "__T">
+export type Infer<T> = index<T, "infer">
 
-export type function DataTypeSchema(schema: type)
-	assert(schema:is("table"), "expected a table")
+export type function InferFromFields(fields: type)
+	assert(fields:is("table"), "expected a table")
 	local result = types.newtable()
-	for key, value in schema:properties() do
+	for key, value in fields:properties() do
 		if value.read then
-			result:setproperty(key, DataTypeValue(value.read))
+			result:setproperty(key, Infer(value.read))
 		end
 	end
 	return result
 end
 
-export type function SelectTupleValue(i: type, ty: type)
-	assert(ty:is("function"), "expected a t.tuple")
-	const returns = ty:returns()
+export type function InferFromTuple(tuple_ty: type, i: type)
+	assert(tuple_ty:is("function"), "expected a t.tuple")
+	const returns = tuple_ty:returns()
 	if i == types.singleton("#") then
 		return types.singleton(tostring(#(returns.head or {})))
 	end
 	const pos = assert(i and i:is("singleton") and tonumber(i:value()), "expected a pos selection")
 	const arg_ty = (returns.head and returns.head[pos :: any]) :: type
 	assert(arg_ty, "pos selection is out of bounds")
-	return DataTypeValue(arg_ty)
+	return Infer(arg_ty)
 end
 
 type function data_type_input(ty: type)
@@ -40,7 +40,7 @@ type function data_type_input(ty: type)
 		return types.newfunction()
 	end
 	if ty:is("table") then
-		return types.newfunction({ head = { DataTypeValue(ty) } })
+		return types.newfunction({ head = { Infer(ty) } })
 	end
 	if not ty:is("function") then
 		return types.newfunction()
@@ -49,7 +49,7 @@ type function data_type_input(ty: type)
 	const head = returns.head or {}
 	const new_head = {}
 	for i, value in head do
-		new_head[i] = DataTypeValue(value)
+		new_head[i] = Infer(value)
 	end
 	return types.newfunction({ head = new_head, tail = returns.tail })
 end
@@ -77,7 +77,7 @@ export type FunctProps = {
 
 export type StateProps<T> = {
 	read value: T,
-	read initial: DataTypeValue<T>,
+	read initial: Infer<T>,
 }
 
 export type DefOptions = {
@@ -86,72 +86,56 @@ export type DefOptions = {
 	read auto_flush: (true | false)?,
 }
 
-type GetPlayerType<T = "player"> = index<{
-	player: Player,
-	list: { Player },
-}, T>
-
-type function build_fire(is_server: boolean, tbl: typeof(types.newtable()), value_fn: type)
-	const value = value_fn:parameters()
-	const head: { any } = value.head or {}
-	if is_server then
-		-- fire: (player: Player, T...) -> ()
-		const fire_head = { GetPlayerType() :: any }
-		table.move(head, 1, #head, #fire_head + 1, fire_head)
-		const fire_fn = types.newfunction({ head = fire_head, tail = value.tail })
-		-- fire_all: (T...) -> ()
-		const fire_all_fn = types.newfunction({ head = head, tail = value.tail })
-		-- fire_list: (players: { Player }, T...) -> ()
-		const list_head = { GetPlayerType(types.singleton("list")) :: any }
-		table.move(head, 1, #head, #list_head + 1, list_head)
-		const fire_list_fn = types.newfunction({ head = list_head, tail = value.tail })
-		-- fire_except: (player: Player, T...) -> ()
-		const fire_except_fn = types.newfunction({ head = fire_head, tail = value.tail })
-		tbl:setproperty(types.singleton("fire"), fire_fn)
-		tbl:setproperty(types.singleton("fire_all"), fire_all_fn)
-		tbl:setproperty(types.singleton("fire_list"), fire_list_fn)
-		tbl:setproperty(types.singleton("fire_except"), fire_except_fn)
-	else
-		-- fire: (T...) -> ()
-		const fire_fn = types.newfunction({ head = value.head, tail = value.tail })
-		tbl:setproperty(types.singleton("fire"), fire_fn)
+type function merge(...: type)
+	const result = types.newtable()
+	const function copy_props(target: type)
+		if target:is("table") then
+			for k, prop in target:properties() do
+				if prop.read then
+					result:setproperty(k, prop.read)
+				end
+			end
+		elseif target:is("intersection") then
+			for _, component in target:components() do
+				copy_props(component)
+			end
+		end
 	end
-	return tbl
-end
-
-type function build_listen(is_server: boolean, tbl: typeof(types.newtable()), value_fb: type)
-	const value = value_fb:parameters()
-	const head: { any } = value.head or {}
-	local cb_head
-	if is_server then
-		-- callback: (player: Player, T...) -> ()
-		cb_head = { GetPlayerType() :: any }
-		table.move(head, 1, #head, #cb_head + 1, cb_head)
-	else
-		-- callback: (T...) -> ()
-		cb_head = head
+	for i = 1, select("#", ...) do
+		const t = select(i, ...)
+		if t then
+			copy_props(t)
+		end
 	end
-	const cb_fn = types.newfunction({ head = cb_head, tail = value.tail })
-	-- disconnect: () -> ()
-	const disconnect_fn = types.newfunction()
-	-- on: (callback) -> disconnect
-	const on_fn = types.newfunction({ head = { cb_fn } }, { head = { disconnect_fn } })
-	tbl:setproperty(types.singleton("on"), on_fn)
-	return tbl
+	return result
 end
 
-type function build_iter(is_server: boolean, tbl: typeof(types.newtable()), value_fn: type)
-	const value = value_fn:parameters()
-	const head = value.head or {}
-	-- next: () -> (number, Player, T...) | (number, T...)
-	const iter_ret_head = if is_server then { types.number, GetPlayerType() } else { types.number }
-	table.move(head, 1, #head, #iter_ret_head + 1, iter_ret_head)
-	const next_fn = types.newfunction({}, { head = iter_ret_head, tail = value.tail })
-	-- iter: () -> next
-	const iter_fn = types.newfunction({}, { head = { next_fn } })
-	tbl:setproperty(types.singleton("iter"), iter_fn)
-	return tbl
-end
+type FireOnServer<T...> = {
+	fire: (player: Player, T...) -> (),
+	fire_all: (T...) -> (),
+	fire_list: (players: { Player }, T...) -> (),
+	fire_except: (player: Player, T...) -> (),
+}
+
+type FireOnClient<T...> = {
+	fire: (T...) -> (),
+}
+
+type ListenOnServer<T...> = {
+	on: (callback: (player: Player, T...) -> ()) -> Cleanup,
+}
+
+type ListenOnClient<T...> = {
+	on: (callback: (T...) -> ()) -> Cleanup,
+}
+
+type IterOnServer<T...> = {
+	iter: () -> () -> (number, Player, T...),
+}
+
+type IterOnClient<T...> = {
+	iter: () -> () -> (number, T...),
+}
 
 export type function EventServer(props: type, options: type)
 	const from = props:readproperty(types.singleton("from"))
@@ -159,19 +143,19 @@ export type function EventServer(props: type, options: type)
 	const call = props:readproperty(types.singleton("call"))
 	const default_call = options:is("table") and options:readproperty(types.singleton("default_call"))
 	const use_polling = (call == types.singleton("Polling")) or (default_call == types.singleton("Polling"))
-	const value_fn = data_type_input(value)
-	const tbl = types.newtable()
+	const value_args = data_type_input(value):parameters().head or {}
+	local result = types.newtable()
 	if from ~= types.singleton("Client") then
-		build_fire(true, tbl, value_fn)
+		result = merge(result, FireOnServer(table.unpack(value_args)))
 	end
 	if from ~= types.singleton("Server") then
 		if use_polling then
-			build_iter(true, tbl, value_fn)
+			result = merge(result, IterOnServer(table.unpack(value_args)))
 		else
-			build_listen(true, tbl, value_fn)
+			result = merge(result, ListenOnServer(table.unpack(value_args)))
 		end
 	end
-	return tbl
+	return result
 end
 
 export type function EventClient(props: type, options: type)
@@ -180,19 +164,19 @@ export type function EventClient(props: type, options: type)
 	const call = props:readproperty(types.singleton("call"))
 	const default_call = options:is("table") and options:readproperty(types.singleton("default_call"))
 	const use_polling = (call == types.singleton("Polling")) or (default_call == types.singleton("Polling"))
-	const value_fn = data_type_input(value)
-	const tbl = types.newtable()
+	const value_args = data_type_input(value):parameters().head or {}
+	local result = types.newtable()
 	if from ~= types.singleton("Server") then
-		build_fire(false, tbl, value_fn)
+		result = merge(result, FireOnClient(table.unpack(value_args)))
 	end
 	if from ~= types.singleton("Client") then
 		if use_polling then
-			build_iter(false, tbl, value_fn)
+			result = merge(result, IterOnClient(table.unpack(value_args)))
 		else
-			build_listen(false, tbl, value_fn)
+			result = merge(result, ListenOnClient(table.unpack(value_args)))
 		end
 	end
-	return tbl
+	return result
 end
 
 export type Event<Props = EventProps, Options = DefOptions> = {
@@ -202,45 +186,31 @@ export type Event<Props = EventProps, Options = DefOptions> = {
 	client: (options: Options & DefOptions, path: string, lifecycle: any) -> EventClient<Props, Options>,
 }
 
-type function build_funct_on(value_fn: type, ret_fn: type)
-	const value = value_fn:parameters()
-	const ret = ret_fn:parameters()
-	-- callback: (player, T...) -> R...
-	const cb_head: { any } = { GetPlayerType() }
-	const in_head = value.head or {}
-	table.move(in_head, 1, #in_head, #cb_head + 1, cb_head)
-	const cb_fn = types.newfunction({ head = cb_head, tail = value.tail }, { head = ret.head, tail = ret.tail })
-	-- on: (callback) -> ()
-	const on_fn = types.newfunction({ head = { cb_fn } })
-	const tbl = types.newtable()
-	tbl:setproperty(types.singleton("on"), on_fn)
-	return tbl
-end
-
-type function build_funct_invoke(value_fn: type, ret_fn: type)
-	const value = value_fn:parameters()
-	const ret = ret_fn:parameters()
-	-- invoke: (T...) -> R...
-	const invoke_fn = types.newfunction({ head = value.head, tail = value.tail }, { head = ret.head, tail = ret.tail })
-	const tbl = types.newtable()
-	tbl:setproperty(types.singleton("invoke"), invoke_fn)
-	return tbl
-end
+type player = Player
 
 export type function FunctServer(props: type)
 	const value = props:readproperty(types.singleton("value")) or types.singleton(nil)
 	const ret = props:readproperty(types.singleton("ret")) or types.singleton(nil)
-	const value_fn = data_type_input(value)
-	const ret_fn = data_type_input(ret)
-	return build_funct_on(value_fn, ret_fn)
+	const value_params = data_type_input(value):parameters()
+	const ret_params = data_type_input(ret):parameters()
+	const result = types.newtable()
+	const head = { player }
+	if value_params.head then
+		table.move(value_params.head, 1, #value_params.head, #head + 1, head)
+	end
+	const cb_fn = types.newfunction({ head = head }, ret_params)
+	result:setproperty(types.singleton("on"), types.newfunction({ head = { cb_fn } }))
+	return result
 end
 
 export type function FunctClient(props: type)
 	const value = props:readproperty(types.singleton("value")) or types.singleton(nil)
 	const ret = props:readproperty(types.singleton("ret")) or types.singleton(nil)
-	const value_fn = data_type_input(value)
-	const ret_fn = data_type_input(ret)
-	return build_funct_invoke(value_fn, ret_fn)
+	const value_params = data_type_input(value):parameters()
+	const ret_params = data_type_input(ret):parameters()
+	const result = types.newtable()
+	result:setproperty(types.singleton("invoke"), types.newfunction(value_params, ret_params))
+	return result
 end
 
 export type Funct<Props = FunctProps> = {
